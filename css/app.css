@@ -356,26 +356,63 @@ textarea { resize: vertical; min-height: 72px; }
 
 /* ── Print ────────────────────────────────────────────────────────── */
 #print-area { display: none; }
+
+/* Label preview canvas in QR sheet */
+#label-preview-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; margin: 4px 0;
+}
+#label-canvas {
+  border-radius: 6px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.4);
+  max-width: 100%;
+}
+.label-save-row {
+  display: flex; gap: 8px; width: 100%; margin-top: 2px;
+}
+
 @media print {
-  * { visibility: hidden !important; }
+  * { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
   #print-area, #print-area * { visibility: visible !important; }
   #print-area {
     position: fixed !important; inset: 0 !important;
-    display: flex !important; flex-wrap: wrap;
-    gap: 16px; padding: 20px; background: white;
-    align-content: flex-start;
+    display: block !important;
+    background: white; width: 6in; height: 4in;
+  }
+  /* Two labels side by side on one 4x6 sheet */
+  .plabel-page {
+    width: 6in; height: 4in;
+    display: flex; flex-direction: row;
+    align-items: stretch;
+    page-break-after: always;
   }
   .plabel {
-    border: 1px solid #ccc; border-radius: 8px;
-    padding: 12px 14px; width: 175px;
-    display: flex; flex-direction: column; align-items: center;
-    gap: 8px; page-break-inside: avoid;
+    width: 3in; height: 4in;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; padding: 16px 14px;
     font-family: -apple-system, Helvetica, Arial, sans-serif;
+    border-right: 1px dashed #ccc;
+    box-sizing: border-box;
   }
-  .plabel-name { font-size: 13px; font-weight: 700; color: #111; text-align: center; }
-  .plabel-room { font-size: 10px; color: #555; }
-  .plabel-id   { font-size: 9px; color: #888; }
-  .plabel-prio { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
-  .plabel-prio.fragile { background: #fde; color: #b00; }
-  .plabel-prio.high    { background: #dfd; color: #050; }
+  .plabel:last-child { border-right: none; }
+  .plabel-header {
+    width: 100%; background: #111; border-radius: 6px;
+    padding: 6px 10px; text-align: center; margin-bottom: 4px;
+  }
+  .plabel-boxnum { font-size: 11px; color: #e8c547; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .plabel-name { font-size: 17px; font-weight: 800; color: #fff; text-align: center; line-height: 1.2; margin-top: 2px; }
+  .plabel-qr { margin: 4px 0; }
+  .plabel-room { font-size: 12px; color: #444; font-weight: 500; }
+  .plabel-id   { font-size: 8px; color: #aaa; font-family: monospace; margin-top: 2px; }
+  .plabel-prio {
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 20px; letter-spacing: 0.3px;
+  }
+  .plabel-prio.fragile { background: #fde; color: #900; border: 1px solid #f99; }
+  .plabel-prio.high    { background: #dfd; color: #040; border: 1px solid #8d8; }
+  .plabel-move { font-size: 9px; color: #bbb; margin-top: 4px; }
+  .plabel-divider {
+    width: 40px; height: 1px; background: #ddd; margin: 2px 0;
+  }
 }

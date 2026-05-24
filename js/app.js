@@ -82,9 +82,7 @@ function wireEvents() {
     if (e.key === 'Enter') goToBoxById(e.target.value);
   });
 
-  // QR
-  document.getElementById('qr-print-btn').addEventListener('click', () => printQR(currentQRBoxId));
-  document.getElementById('qr-close-btn').addEventListener('click', () => closeSheet('qr-sheet'));
+  // QR buttons are wired dynamically in wireQRButtons() per box
 
   // Settings
   document.getElementById('save-move-btn').addEventListener('click', saveMoveSettings);
@@ -341,56 +339,258 @@ async function runAIIdentify(boxId) {
   }
 }
 
-// ── QR Code ────────────────────────────────────────────────────────────────
-function showQR(boxId) {
+// ── QR Code & Label ────────────────────────────────────────────────────────
+
+// Renders one label half onto a canvas context
+// cx,cy = top-left corner, w,h = label dimensions (pixels)
+function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
+  const pad = 20;
+  const ff  = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, w, h);
+
+  // Dark header bar
+  const headerH = 64;
+  ctx.fillStyle = '#111111';
+  roundRect(ctx, x + pad, y + pad, w - pad*2, headerH, 8);
+  ctx.fill();
+
+  // Box number label (amber)
+  ctx.fillStyle = '#e8c547';
+  ctx.font = `600 11px ${ff}`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`BOX #${box.num}`, x + w/2, y + pad + 20);
+
+  // Box name (white, large)
+  ctx.fillStyle = '#ffffff';
+  const nameSize = box.name.length > 18 ? 15 : box.name.length > 12 ? 17 : 20;
+  ctx.font = `800 ${nameSize}px ${ff}`;
+  ctx.fillText(truncate(box.name, 22), x + w/2, y + pad + 50);
+
+  // QR code — centered
+  const qrSize = Math.min(w - pad*4, 160);
+  const qrX = x + (w - qrSize) / 2;
+  const qrY = y + pad + headerH + 14;
+  ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+  // Thin divider
+  const divY = qrY + qrSize + 12;
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + pad + 20, divY);
+  ctx.lineTo(x + w - pad - 20, divY);
+  ctx.stroke();
+
+  // Room
+  let infoY = divY + 18;
+  if (box.room) {
+    ctx.fillStyle = '#444444';
+    ctx.font = `500 12px ${ff}`;
+    ctx.fillText(box.room, x + w/2, infoY);
+    infoY += 16;
+  }
+
+  // Priority badge
+  if (box.priority === 'fragile' || box.priority === 'high') {
+    const label  = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
+    const bgCol  = box.priority === 'fragile' ? '#ffeaea' : '#eaffea';
+    const txCol  = box.priority === 'fragile' ? '#990000' : '#004400';
+    const bw = ctx.measureText(label).width + 20;
+    ctx.fillStyle = bgCol;
+    roundRect(ctx, x + w/2 - bw/2, infoY - 12, bw, 20, 10);
+    ctx.fill();
+    ctx.fillStyle = txCol;
+    ctx.font = `700 11px ${ff}`;
+    ctx.fillText(label, x + w/2, infoY + 2);
+    infoY += 22;
+  }
+
+  // Box ID
+  ctx.fillStyle = '#bbbbbb';
+  ctx.font = `400 8px monospace`;
+  ctx.fillText(box.id, x + w/2, infoY + 6);
+
+  // Move name (bottom)
+  if (moveName) {
+    ctx.fillStyle = '#cccccc';
+    ctx.font = `400 9px ${ff}`;
+    ctx.fillText(moveName, x + w/2, y + h - 10);
+  }
+
+  // Dashed divider line on right edge (for cutting)
+  ctx.save();
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = '#dddddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + w, y + pad/2);
+  ctx.lineTo(x + w, y + h - pad/2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+// Generate a QR code canvas for a given string
+function generateQRCanvas(text, size) {
+  return new Promise((resolve) => {
+    const wrap = document.getElementById('qr-render');
+    wrap.innerHTML = '';
+    new QRCode(wrap, {
+      text, width: size, height: size,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    setTimeout(() => {
+      const img = wrap.querySelector('img') || wrap.querySelector('canvas');
+      resolve(img);
+    }, 200);
+  });
+}
+
+// Build the full 4x6 canvas (2 copies side by side) for a box
+async function buildLabelCanvas(box) {
+  // 4x6 at 150dpi → 600 x 900px  (landscape: 6in wide × 4in tall)
+  const DPI = 150;
+  const W   = 6 * DPI;   // 900px
+  const H   = 4 * DPI;   // 600px
+
+  const canvas = document.getElementById('label-canvas');
+  canvas.width  = W;
+  canvas.height = H;
+
+  // Scale for display (fit in sheet bottom drawer ~320px wide)
+  const displayW = Math.min(320, window.innerWidth - 48);
+  canvas.style.width  = displayW + 'px';
+  canvas.style.height = Math.round(displayW * H / W) + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 0, W, H);
+
+  // Generate QR code image
+  const qrImg = await generateQRCanvas(box.id, 200);
+
+  // Draw two identical label halves
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  drawLabelOnCanvas(ctx, box, qrImg, 0,     0, W/2, H);
+  drawLabelOnCanvas(ctx, box, qrImg, W/2,   0, W/2, H);
+
+  return canvas;
+}
+
+async function showQR(boxId) {
   currentQRBoxId = boxId;
   const box = boxes.find(b => b.id === boxId);
   if (!box) return;
-  document.getElementById('qr-sheet-title').textContent = `Box #${box.num} — QR Label`;
-  document.getElementById('qr-sub-text').textContent = `${box.id} · ${box.name}`;
-  const el = document.getElementById('qr-render');
-  el.innerHTML = '';
-  new QRCode(el, {
-    text: box.id, width: 176, height: 176,
-    colorDark: '#111111', colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
-  });
+
+  document.getElementById('qr-sheet-title').textContent = `Box #${box.num} — Label`;
+
+  // Show Drive save button only if connected
+  const driveBtn = document.getElementById('qr-save-drive-btn');
+  if (driveBtn) driveBtn.style.display = Drive.isConnected() ? 'flex' : 'none';
+
   openSheet('qr-sheet');
+
+  // Build canvas after sheet opens
+  setTimeout(async () => {
+    document.getElementById('label-preview-wrap').innerHTML =
+      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">2 copies · 4×6 label</p>';
+    await buildLabelCanvas(box);
+    wireQRButtons(box);
+  }, 100);
+}
+
+function wireQRButtons(box) {
+  document.getElementById('qr-print-btn')?.addEventListener('click', () => printQR(box.id));
+  document.getElementById('qr-save-png-btn')?.addEventListener('click', () => saveLabelPNG(box));
+  document.getElementById('qr-save-drive-btn')?.addEventListener('click', () => saveLabelToDrive(box));
+  document.getElementById('qr-close-btn')?.addEventListener('click', () => closeSheet('qr-sheet'));
+}
+
+function saveLabelPNG(box) {
+  const canvas = document.getElementById('label-canvas');
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.download = `movebox-label-${box.id}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+async function saveLabelToDrive(box) {
+  const canvas = document.getElementById('label-canvas');
+  if (!canvas || !Drive.isConnected()) return;
+  showToast('Saving label to Drive…');
+  const dataUrl  = canvas.toDataURL('image/png');
+  const filename = `label-${box.id}.png`;
+  await Drive.uploadPhoto(box.id, box.name, dataUrl, filename);
+  hideToast();
+  showToast('Label saved to Drive ✓');
+  setTimeout(hideToast, 2000);
 }
 
 function printQR(boxId) {
-  const box = boxId ? boxes.find(b => b.id === boxId) : null;
-  const toPrint = box ? [box] : boxes;
-  if (!toPrint.length) { window.print(); return; }
+  const box = boxes.find(b => b.id === boxId);
+  if (!box) return;
 
+  // Build print-area with two label copies side by side
   const area = document.getElementById('print-area');
   area.innerHTML = '';
 
-  toPrint.forEach(b => {
-    const div = document.createElement('div');
-    div.className = 'plabel';
-    const prioClass = b.priority === 'fragile' ? 'fragile' : b.priority === 'high' ? 'high' : '';
-    const prioLabel = b.priority === 'fragile' ? '⚠ FRAGILE' : b.priority === 'high' ? '★ OPEN FIRST' : '';
-    div.innerHTML = `
-      <div class="plabel-name">Box #${b.num}: ${escHtml(b.name)}</div>
-      ${b.room ? `<div class="plabel-room">${escHtml(b.room)}</div>` : ''}
-      <div id="pqr_${b.id}"></div>
-      <div class="plabel-id">${b.id}</div>
+  // We need a QR code element for each label
+  // Use a hidden page layout matching @media print CSS
+  const page = document.createElement('div');
+  page.className = 'plabel-page';
+
+  [0, 1].forEach(i => {
+    const label = document.createElement('div');
+    label.className = 'plabel';
+    const prioClass = box.priority === 'fragile' ? 'fragile' : box.priority === 'high' ? 'high' : '';
+    const prioLabel = box.priority === 'fragile' ? '⚠ FRAGILE' : box.priority === 'high' ? '★ OPEN FIRST' : '';
+    label.innerHTML = `
+      <div class="plabel-header">
+        <div class="plabel-boxnum">Box #${box.num}</div>
+        <div class="plabel-name">${escHtml(box.name)}</div>
+      </div>
+      <div class="plabel-qr" id="pqr_${box.id}_${i}"></div>
+      <div class="plabel-divider"></div>
+      ${box.room ? `<div class="plabel-room">${escHtml(box.room)}</div>` : ''}
       ${prioLabel ? `<div class="plabel-prio ${prioClass}">${prioLabel}</div>` : ''}
-      ${moveName ? `<div class="plabel-id">${escHtml(moveName)}</div>` : ''}
+      <div class="plabel-id">${box.id}</div>
+      ${moveName ? `<div class="plabel-move">${escHtml(moveName)}</div>` : ''}
     `;
-    area.appendChild(div);
+    page.appendChild(label);
   });
 
+  area.appendChild(page);
+
   setTimeout(() => {
-    toPrint.forEach(b => {
+    [0, 1].forEach(i => {
       try {
-        new QRCode(document.getElementById('pqr_' + b.id), {
-          text: b.id, width: 120, height: 120,
+        new QRCode(document.getElementById(`pqr_${box.id}_${i}`), {
+          text: box.id, width: 130, height: 130,
           colorDark: '#000', colorLight: '#fff',
           correctLevel: QRCode.CorrectLevel.H
         });
-      } catch (e) {}
+      } catch(e) {}
     });
     setTimeout(() => window.print(), 700);
   }, 100);

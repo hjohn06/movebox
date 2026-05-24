@@ -155,15 +155,24 @@
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title" id="qr-sheet-title">QR Code</div>
-    <div class="qr-center">
-      <div class="qr-card" id="qr-render"></div>
-      <p class="qr-sub" id="qr-sub-text"></p>
+    <div id="label-preview-wrap">
+      <canvas id="label-canvas"></canvas>
     </div>
-    <div class="sheet-actions" style="flex-direction:column;gap:10px;">
+    <div class="sheet-actions" style="flex-direction:column;gap:10px;margin-top:14px;">
       <button class="btn btn-primary btn-full" id="qr-print-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Print Label
+        Print Label (4×6)
       </button>
+      <div class="label-save-row">
+        <button class="btn btn-full" id="qr-save-png-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save as PNG
+        </button>
+        <button class="btn btn-full" id="qr-save-drive-btn" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Save to Drive
+        </button>
+      </div>
       <button class="btn btn-full" id="qr-close-btn">Done</button>
     </div>
   </div>
@@ -176,6 +185,9 @@
     <span id="ai-toast-text">Identifying contents…</span>
   </div>
 </div>
+
+<!-- Hidden QR generator (off-screen) -->
+<div id="qr-render" style="position:absolute;left:-9999px;top:-9999px;"></div>
 
 <!-- Print area (hidden except print) -->
 <div id="print-area"></div>
