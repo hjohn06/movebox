@@ -161,7 +161,14 @@ const Drive = (() => {
   //   - Union of all box IDs across both sides
   //   - For boxes that exist on both sides, keep whichever was modified more recently
   //   - Photos are merged by timestamp (union, deduped by ts)
-  function mergeBoxes(local, remote) {
+  //   - Deletions are tracked with timestamps; a deletion wins if deletedAt >= box.updatedAt
+  function mergeBoxes(local, remote, localDeleted = {}, remoteDeleted = {}) {
+    // Merge deleted maps — union, keep the most recent deletion timestamp per ID
+    const mergedDeleted = { ...remoteDeleted };
+    for (const [id, ts] of Object.entries(localDeleted)) {
+      mergedDeleted[id] = Math.max(mergedDeleted[id] || 0, ts);
+    }
+
     const byId = {};
 
     // Index local
@@ -191,19 +198,27 @@ const Drive = (() => {
       }
     }
 
+    // Apply deletions — a box is removed if it was deleted at or after its last update
+    for (const [id, deletedAt] of Object.entries(mergedDeleted)) {
+      const box = byId[id];
+      if (box && deletedAt >= (box.updatedAt || box.created || 0)) {
+        delete byId[id];
+      }
+    }
+
     // Preserve original order (by box num), append new remote boxes at end
     const localIds = new Set(local.map(b => b.id));
     const result = local.map(b => byId[b.id]).filter(Boolean);
     for (const b of remote) {
-      if (!localIds.has(b.id)) result.push(byId[b.id]);
+      if (!localIds.has(b.id) && byId[b.id]) result.push(byId[b.id]);
     }
-    return result;
+    return { boxes: result, deletedBoxes: mergedDeleted };
   }
 
   // ── PUBLIC: Full sync ─────────────────────────────────────────────
   // Pulls remote DB, merges with local, pushes merged result back.
-  // Returns { merged: Box[], newCount: number, updatedCount: number }
-  async function syncDatabase(localBoxes, moveName) {
+  // Returns { merged: Box[], mergedDeleted: Object, newCount: number, updatedCount: number }
+  async function syncDatabase(localBoxes, moveName, localDeleted = {}) {
     if (!isConnected()) throw new Error('Not connected to Drive');
     if (syncInFlight) throw new Error('Sync already in progress');
     syncInFlight = true;
@@ -225,16 +240,18 @@ const Drive = (() => {
       // Read remote
       let remoteBoxes = [];
       let remoteMoveName = moveName;
+      let remoteDeleted = {};
       if (fileId) {
         const remote = await readDbFile(fileId);
         if (remote) {
           remoteBoxes = remote.boxes || [];
           remoteMoveName = remote.moveName || moveName;
+          remoteDeleted = remote.deletedBoxes || {};
         }
       }
 
       // Merge
-      const merged = mergeBoxes(localBoxes, remoteBoxes);
+      const { boxes: merged, deletedBoxes: mergedDeleted } = mergeBoxes(localBoxes, remoteBoxes, localDeleted, remoteDeleted);
       const mergedMoveName = moveName || remoteMoveName;
 
       // Write back
@@ -242,7 +259,8 @@ const Drive = (() => {
         version: 1,
         moveName: mergedMoveName,
         syncedAt: new Date().toISOString(),
-        boxes: merged
+        boxes: merged,
+        deletedBoxes: mergedDeleted
       };
       const newFileId = await writeDbFile(folderId, fileId, payload);
       if (!fileId) {
@@ -259,7 +277,7 @@ const Drive = (() => {
         return l && (m.photos || []).length > (l.photos || []).length;
       }).length;
 
-      return { merged, mergedMoveName, newCount, updatedCount };
+      return { merged, mergedMoveName, mergedDeleted, newCount, updatedCount };
     } finally {
       syncInFlight = false;
     }

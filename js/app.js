@@ -675,11 +675,15 @@ async function runSync({ silent = false } = {}) {
   if (!silent) showToast('Syncing with Google Drive…');
   setSyncIndicator('syncing');
   try {
-    const result = await Drive.syncDatabase(boxes, moveName);
+    const localDeleted = JSON.parse(localStorage.getItem('mb_deleted_boxes') || '{}');
+    const result = await Drive.syncDatabase(boxes, moveName, localDeleted);
     boxes = result.merged;
     moveName = result.mergedMoveName || moveName;
     localStorage.setItem('mb_boxes', JSON.stringify(boxes));
     localStorage.setItem('mb_movename', moveName);
+    if (result.mergedDeleted) {
+      localStorage.setItem('mb_deleted_boxes', JSON.stringify(result.mergedDeleted));
+    }
     document.getElementById('move-name-input').value = moveName;
     renderBoxList();
     updateSyncStatus();
@@ -818,11 +822,18 @@ function saveMoveSettings() {
 
 function clearAll() {
   if (!confirm('Delete ALL boxes and photos? This cannot be undone.')) return;
+  const deleted = JSON.parse(localStorage.getItem('mb_deleted_boxes') || '{}');
+  const now = Date.now();
+  boxes.forEach(b => { deleted[b.id] = now; });
+  localStorage.setItem('mb_deleted_boxes', JSON.stringify(deleted));
   boxes = []; saveBoxes(); renderBoxList();
 }
 
 function deleteBox(boxId) {
   if (!confirm('Delete this box and all its photos? This cannot be undone.')) return;
+  const deleted = JSON.parse(localStorage.getItem('mb_deleted_boxes') || '{}');
+  deleted[boxId] = Date.now();
+  localStorage.setItem('mb_deleted_boxes', JSON.stringify(deleted));
   boxes = boxes.filter(b => b.id !== boxId);
   saveBoxes(); renderBoxList(); closeSheet('detail-sheet');
 }
