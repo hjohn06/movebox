@@ -7,7 +7,7 @@
 
 const AI = (() => {
   // ── Set this after deploying your Cloudflare Worker ──────────────
-  const WORKER_URL = window.MOVEBOX_AI_PROXY || 'https://movebox-ai-proxy.YOUR-SUBDOMAIN.workers.dev';
+  const WORKER_URL = window.MOVEBOX_AI_PROXY || 'https://movebox-ai-proxy.hjohn06.workers.dev';
 
   function isConfigured() {
     return !WORKER_URL.includes('YOUR-SUBDOMAIN');
@@ -15,9 +15,9 @@ const AI = (() => {
 
   async function callProxy(body) {
     const res = await fetch(WORKER_URL, {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.text();
@@ -41,7 +41,7 @@ const AI = (() => {
     });
 
     const d = await callProxy({
-      model:      'claude-opus-4-5',
+      model: 'claude-opus-4-5',
       max_tokens: 512,
       messages: [{
         role: 'user',
@@ -68,7 +68,7 @@ Format: Start directly with the item list, no preamble. Use short lines.`
     const mediaType = header.match(/:(.*?);/)[1];
     try {
       const d = await callProxy({
-        model:      'claude-opus-4-5',
+        model: 'claude-opus-4-5',
         max_tokens: 60,
         messages: [{
           role: 'user',
