@@ -10,7 +10,7 @@
 
 const Drive = (() => {
   // ── CONFIG ────────────────────────────────────────────────────────
-  const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-u8ih8caikgjsa10p4s2fpsee5bg8u6c5.apps.googleusercontent.com';
+  const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const FOLDER_NAME = 'MoveBox';
   const DB_FILENAME = 'movebox-db.json';
@@ -25,7 +25,7 @@ const Drive = (() => {
 
   // ── Public API ────────────────────────────────────────────────────
   function isConfigured() {
-    return CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_HERE' && CLIENT_ID.length > 10;
+    return CLIENT_ID !== '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com' && CLIENT_ID.length > 10;
   }
 
   function isConnected() {
