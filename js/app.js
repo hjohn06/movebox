@@ -365,10 +365,11 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 28);
 
   // Box name (black, large)
+  const displayName = box.labelName || box.name;
   ctx.fillStyle = '#000000';
-  const nameSize = box.name.length > 18 ? 28 : box.name.length > 12 ? 32 : 38;
+  const nameSize = displayName.length > 18 ? 28 : displayName.length > 12 ? 32 : 38;
   ctx.font = `800 ${nameSize}px ${ff}`;
-  ctx.fillText(truncate(box.name, 22), x + w / 2, y + pad + 68);
+  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + 68);
 
   // QR code — centered
   const qrSize = Math.min(w - pad * 4, 160);
@@ -514,6 +515,21 @@ async function showQR(boxId) {
   // Show Drive save button only if connected
   const driveBtn = document.getElementById('qr-save-drive-btn');
   if (driveBtn) driveBtn.style.display = Drive.isConnected() ? 'flex' : 'none';
+
+  // Populate label name input
+  const nameInput = document.getElementById('qr-label-name-input');
+  if (nameInput) {
+    nameInput.value = box.labelName || box.name;
+    let redrawTimer;
+    nameInput.oninput = () => {
+      clearTimeout(redrawTimer);
+      redrawTimer = setTimeout(async () => {
+        box.labelName = nameInput.value.trim() || box.name;
+        saveBoxes();
+        await buildLabelCanvas(box);
+      }, 350);
+    };
+  }
 
   openSheet('qr-sheet');
 
