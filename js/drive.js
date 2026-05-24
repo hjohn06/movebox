@@ -10,7 +10,9 @@
 
 const Drive = (() => {
   // ── CONFIG ────────────────────────────────────────────────────────
-  const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
+  // const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
+  const CLIENT_ID = '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
+
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const FOLDER_NAME = 'MoveBox';
   const DB_FILENAME = 'movebox-db.json';
