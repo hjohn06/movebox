@@ -16,7 +16,7 @@ const Drive = (() => {
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const FOLDER_NAME = 'MoveBox';
   const DB_FILENAME = 'movebox-db.json';
-  const REDIRECT_URI = window.location.origin + '/oauth-callback.html';
+  const REDIRECT_URI = window.location.origin + '/movebox/oauth-callback.html';
 
   // ── State ─────────────────────────────────────────────────────────
   let accessToken = localStorage.getItem('mb_drive_token') || null;
