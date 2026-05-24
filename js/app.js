@@ -3,13 +3,13 @@
  */
 
 // ── State ──────────────────────────────────────────────────────────────────
-let boxes    = JSON.parse(localStorage.getItem('mb_boxes') || '[]');
+let boxes = JSON.parse(localStorage.getItem('mb_boxes') || '[]');
 let moveName = localStorage.getItem('mb_movename') || '';
 let scannerRunning = false;
-let html5QrCode    = null;
-let currentBoxId   = null;
+let html5QrCode = null;
+let currentBoxId = null;
 let currentQRBoxId = null;
-let nbPriority     = 'normal';
+let nbPriority = 'normal';
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -105,7 +105,7 @@ function switchTab(name, el) {
 
 // ── Box list ───────────────────────────────────────────────────────────────
 function renderBoxList() {
-  const list  = document.getElementById('box-list');
+  const list = document.getElementById('box-list');
   const empty = document.getElementById('box-empty');
   updateNavCount();
 
@@ -117,10 +117,10 @@ function renderBoxList() {
   empty.style.display = 'none';
 
   list.innerHTML = boxes.map(b => {
-    const pCls   = b.priority === 'high' ? 'pill-green' : b.priority === 'fragile' ? 'pill-red' : 'pill-amber';
+    const pCls = b.priority === 'high' ? 'pill-green' : b.priority === 'fragile' ? 'pill-red' : 'pill-amber';
     const pLabel = b.priority === 'high' ? 'Open first' : b.priority === 'fragile' ? 'Fragile' : 'Normal';
-    const nPh    = (b.photos || []).length;
-    const aiTag  = b.aiIdentified ? '<span class="pill pill-blue">AI ✓</span>' : '';
+    const nPh = (b.photos || []).length;
+    const aiTag = b.aiIdentified ? '<span class="pill pill-blue">AI ✓</span>' : '';
     return `
       <div class="box-item" data-id="${b.id}">
         <div class="box-num">${b.num}</div>
@@ -158,14 +158,14 @@ function createBox() {
   const name = document.getElementById('nb-name').value.trim();
   if (!name) { document.getElementById('nb-name').focus(); return; }
   const num = boxes.length + 1;
-  const id  = 'BOX-' + String(num).padStart(3, '0') + '-' + uid();
+  const id = 'BOX-' + String(num).padStart(3, '0') + '-' + uid();
   const box = {
     id, num, name,
-    room:     document.getElementById('nb-room').value,
+    room: document.getElementById('nb-room').value,
     priority: nbPriority,
-    notes:    document.getElementById('nb-notes').value.trim(),
-    photos:   [],
-    created:  Date.now(),
+    notes: document.getElementById('nb-notes').value.trim(),
+    photos: [],
+    created: Date.now(),
     updatedAt: Date.now(),
     aiIdentified: false,
     aiSummary: ''
@@ -188,13 +188,13 @@ function renderBoxDetail(boxId) {
   const box = boxes.find(b => b.id === boxId);
   if (!box) return;
 
-  const pCls   = box.priority === 'high' ? 'pill-green' : box.priority === 'fragile' ? 'pill-red' : 'pill-amber';
+  const pCls = box.priority === 'high' ? 'pill-green' : box.priority === 'fragile' ? 'pill-red' : 'pill-amber';
   const pLabel = box.priority === 'high' ? '🟢 Open first' : box.priority === 'fragile' ? '🔴 Fragile' : 'Normal';
-  const nPh    = (box.photos || []).length;
+  const nPh = (box.photos || []).length;
 
   const photosGrid = (box.photos || []).map((p, i) => `
     <div class="photo-thumb">
-      <img src="${p.data}" alt="Photo ${i+1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
+      <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
       <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
     </div>`).join('');
 
@@ -275,7 +275,7 @@ function addPhoto(boxId) {
     const file = e.target.files[0];
     if (!file) return;
     const data = await readFileAsDataURL(file);
-    const box  = boxes.find(b => b.id === boxId);
+    const box = boxes.find(b => b.id === boxId);
     if (!box) return;
     if (!box.photos) box.photos = [];
     const photo = { data, name: file.name, ts: Date.now(), driveLink: null };
@@ -326,8 +326,8 @@ async function runAIIdentify(boxId) {
 
   try {
     const summary = await AI.identifyContents(box.photos);
-    box.aiSummary     = summary;
-    box.aiIdentified  = true;
+    box.aiSummary = summary;
+    box.aiIdentified = true;
     saveBoxes();
     renderBoxDetail(boxId);
     renderBoxList();
@@ -345,7 +345,7 @@ async function runAIIdentify(boxId) {
 // cx,cy = top-left corner, w,h = label dimensions (pixels)
 function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   const pad = 20;
-  const ff  = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
 
   // White background
   ctx.fillStyle = '#ffffff';
@@ -354,23 +354,23 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   // Dark header bar
   const headerH = 64;
   ctx.fillStyle = '#111111';
-  roundRect(ctx, x + pad, y + pad, w - pad*2, headerH, 8);
+  roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, 8);
   ctx.fill();
 
   // Box number label (amber)
   ctx.fillStyle = '#e8c547';
   ctx.font = `600 11px ${ff}`;
   ctx.textAlign = 'center';
-  ctx.fillText(`BOX #${box.num}`, x + w/2, y + pad + 20);
+  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 20);
 
   // Box name (white, large)
   ctx.fillStyle = '#ffffff';
   const nameSize = box.name.length > 18 ? 15 : box.name.length > 12 ? 17 : 20;
   ctx.font = `800 ${nameSize}px ${ff}`;
-  ctx.fillText(truncate(box.name, 22), x + w/2, y + pad + 50);
+  ctx.fillText(truncate(box.name, 22), x + w / 2, y + pad + 50);
 
   // QR code — centered
-  const qrSize = Math.min(w - pad*4, 160);
+  const qrSize = Math.min(w - pad * 4, 160);
   const qrX = x + (w - qrSize) / 2;
   const qrY = y + pad + headerH + 14;
   ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
@@ -389,35 +389,35 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   if (box.room) {
     ctx.fillStyle = '#444444';
     ctx.font = `500 12px ${ff}`;
-    ctx.fillText(box.room, x + w/2, infoY);
+    ctx.fillText(box.room, x + w / 2, infoY);
     infoY += 16;
   }
 
   // Priority badge
   if (box.priority === 'fragile' || box.priority === 'high') {
-    const label  = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
-    const bgCol  = box.priority === 'fragile' ? '#ffeaea' : '#eaffea';
-    const txCol  = box.priority === 'fragile' ? '#990000' : '#004400';
+    const label = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
+    const bgCol = box.priority === 'fragile' ? '#ffeaea' : '#eaffea';
+    const txCol = box.priority === 'fragile' ? '#990000' : '#004400';
     const bw = ctx.measureText(label).width + 20;
     ctx.fillStyle = bgCol;
-    roundRect(ctx, x + w/2 - bw/2, infoY - 12, bw, 20, 10);
+    roundRect(ctx, x + w / 2 - bw / 2, infoY - 12, bw, 20, 10);
     ctx.fill();
     ctx.fillStyle = txCol;
     ctx.font = `700 11px ${ff}`;
-    ctx.fillText(label, x + w/2, infoY + 2);
+    ctx.fillText(label, x + w / 2, infoY + 2);
     infoY += 22;
   }
 
   // Box ID
   ctx.fillStyle = '#bbbbbb';
   ctx.font = `400 8px monospace`;
-  ctx.fillText(box.id, x + w/2, infoY + 6);
+  ctx.fillText(box.id, x + w / 2, infoY + 6);
 
   // Move name (bottom)
   if (moveName) {
     ctx.fillStyle = '#cccccc';
     ctx.font = `400 9px ${ff}`;
-    ctx.fillText(moveName, x + w/2, y + h - 10);
+    ctx.fillText(moveName, x + w / 2, y + h - 10);
   }
 
   // Dashed divider line on right edge (for cutting)
@@ -426,8 +426,8 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.strokeStyle = '#dddddd';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x + w, y + pad/2);
-  ctx.lineTo(x + w, y + h - pad/2);
+  ctx.moveTo(x + w, y + pad / 2);
+  ctx.lineTo(x + w, y + h - pad / 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -458,10 +458,16 @@ function generateQRCanvas(text, size) {
       colorDark: '#000000', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
+    const check = setInterval(() => {
+      const cvs = wrap.querySelector('canvas');
+      if (cvs) { clearInterval(check); resolve(cvs); return; }
+      const img = wrap.querySelector('img');
+      if (img && img.complete && img.naturalWidth > 0) { clearInterval(check); resolve(img); return; }
+    }, 50);
     setTimeout(() => {
-      const img = wrap.querySelector('img') || wrap.querySelector('canvas');
-      resolve(img);
-    }, 200);
+      clearInterval(check);
+      resolve(wrap.querySelector('canvas') || wrap.querySelector('img'));
+    }, 3000);
   });
 }
 
@@ -469,16 +475,16 @@ function generateQRCanvas(text, size) {
 async function buildLabelCanvas(box) {
   // 4x6 at 150dpi → 600 x 900px  (landscape: 6in wide × 4in tall)
   const DPI = 150;
-  const W   = 6 * DPI;   // 900px
-  const H   = 4 * DPI;   // 600px
+  const W = 6 * DPI;   // 900px
+  const H = 4 * DPI;   // 600px
 
   const canvas = document.getElementById('label-canvas');
-  canvas.width  = W;
+  canvas.width = W;
   canvas.height = H;
 
   // Scale for display (fit in sheet bottom drawer ~320px wide)
   const displayW = Math.min(320, window.innerWidth - 48);
-  canvas.style.width  = displayW + 'px';
+  canvas.style.width = displayW + 'px';
   canvas.style.height = Math.round(displayW * H / W) + 'px';
 
   const ctx = canvas.getContext('2d');
@@ -491,8 +497,8 @@ async function buildLabelCanvas(box) {
   // Draw two identical label halves
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  drawLabelOnCanvas(ctx, box, qrImg, 0,     0, W/2, H);
-  drawLabelOnCanvas(ctx, box, qrImg, W/2,   0, W/2, H);
+  drawLabelOnCanvas(ctx, box, qrImg, 0, 0, W / 2, H);
+  drawLabelOnCanvas(ctx, box, qrImg, W / 2, 0, W / 2, H);
 
   return canvas;
 }
@@ -539,7 +545,7 @@ async function saveLabelToDrive(box) {
   const canvas = document.getElementById('label-canvas');
   if (!canvas || !Drive.isConnected()) return;
   showToast('Saving label to Drive…');
-  const dataUrl  = canvas.toDataURL('image/png');
+  const dataUrl = canvas.toDataURL('image/png');
   const filename = `label-${box.id}.png`;
   await Drive.uploadPhoto(box.id, box.name, dataUrl, filename);
   hideToast();
@@ -590,7 +596,7 @@ function printQR(boxId) {
           colorDark: '#000', colorLight: '#fff',
           correctLevel: QRCode.CorrectLevel.H
         });
-      } catch(e) {}
+      } catch (e) { }
     });
     setTimeout(() => window.print(), 700);
   }, 100);
@@ -609,7 +615,7 @@ function startScanner() {
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 200, height: 200 } },
     (text) => { stopScanner(); handleScanResult(text); },
-    () => {}
+    () => { }
   ).then(() => {
     scannerRunning = true;
     document.getElementById('scan-toggle-btn').innerHTML = `
@@ -621,7 +627,7 @@ function startScanner() {
 }
 
 function stopScanner() {
-  html5QrCode?.stop().catch(() => {});
+  html5QrCode?.stop().catch(() => { });
   html5QrCode = null;
   scannerRunning = false;
   document.getElementById('scanner-viewport').innerHTML = `
@@ -636,7 +642,7 @@ function stopScanner() {
 
 function handleScanResult(text) {
   const box = boxes.find(b => b.id === text.trim().toUpperCase());
-  const el  = document.getElementById('scan-result');
+  const el = document.getElementById('scan-result');
   el.style.display = 'block';
   if (box) {
     el.style.borderColor = 'rgba(92,191,133,0.4)';
@@ -669,9 +675,9 @@ async function runSync({ silent = false } = {}) {
   setSyncIndicator('syncing');
   try {
     const result = await Drive.syncDatabase(boxes, moveName);
-    boxes    = result.merged;
+    boxes = result.merged;
     moveName = result.mergedMoveName || moveName;
-    localStorage.setItem('mb_boxes',    JSON.stringify(boxes));
+    localStorage.setItem('mb_boxes', JSON.stringify(boxes));
     localStorage.setItem('mb_movename', moveName);
     document.getElementById('move-name-input').value = moveName;
     renderBoxList();
@@ -698,9 +704,9 @@ function setSyncIndicator(state) {
   const ind = document.getElementById('drive-nav-indicator');
   if (!ind) return;
   ind.classList.remove('connected', 'syncing', 'error');
-  if (state === 'ok')      ind.classList.add('connected');
+  if (state === 'ok') ind.classList.add('connected');
   if (state === 'syncing') ind.classList.add('syncing');
-  if (state === 'error')   ind.classList.add('error');
+  if (state === 'error') ind.classList.add('error');
 }
 
 function updateSyncStatus() {
@@ -712,9 +718,9 @@ function updateSyncStatus() {
 
 function formatRelTime(date) {
   const sec = Math.round((Date.now() - date.getTime()) / 1000);
-  if (sec < 10)  return 'just now';
-  if (sec < 60)  return sec + 's ago';
-  if (sec < 3600) return Math.round(sec/60) + 'm ago';
+  if (sec < 10) return 'just now';
+  if (sec < 60) return sec + 's ago';
+  if (sec < 3600) return Math.round(sec / 60) + 'm ago';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -845,7 +851,7 @@ function uid() {
   return Math.random().toString(36).slice(2, 6).toUpperCase();
 }
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function readFileAsDataURL(file) {
   return new Promise((res, rej) => {
