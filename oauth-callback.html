@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoveBox — Connecting Drive…</title>
+  <style>
+    body { font-family: -apple-system, Helvetica, Arial, sans-serif; background: #0f0f11; color: #f0ede8; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .wrap { text-align: center; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #e8c547; margin: 0 auto 16px; }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    p  { font-size: 14px; color: #8a8790; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="dot"></div>
+  <h2 id="msg">Connecting Google Drive…</h2>
+  <p id="sub">This window will close automatically.</p>
+</div>
+<script>
+  (function () {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const token      = params.get('access_token');
+    const expiresIn  = params.get('expires_in');
+    const error      = params.get('error');
+
+    if (error) {
+      document.getElementById('msg').textContent = 'Authorization cancelled';
+      document.getElementById('sub').textContent = error;
+      setTimeout(() => window.close(), 2000);
+      return;
+    }
+
+    if (token && window.opener) {
+      window.opener.postMessage({
+        type: 'MB_OAUTH_TOKEN',
+        access_token: token,
+        expires_in: parseInt(expiresIn || '3600')
+      }, window.location.origin);
+      document.getElementById('msg').textContent = 'Drive connected!';
+      document.getElementById('sub').textContent = 'You can close this window.';
+      setTimeout(() => window.close(), 1200);
+    } else {
+      document.getElementById('msg').textContent = 'Something went wrong';
+      document.getElementById('sub').textContent = 'No token received. Please try again.';
+      setTimeout(() => window.close(), 3000);
+    }
+  })();
+</script>
+</body>
+</html>
