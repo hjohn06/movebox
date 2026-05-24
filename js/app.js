@@ -351,23 +351,24 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, w, h);
 
-  // Dark header bar
-  const headerH = 64;
-  ctx.fillStyle = '#111111';
+  // Header bar - black border only
+  const headerH = 80;
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
   roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, 8);
-  ctx.fill();
+  ctx.stroke();
 
-  // Box number label (amber)
-  ctx.fillStyle = '#e8c547';
-  ctx.font = `600 11px ${ff}`;
+  // Box number label (black)
+  ctx.fillStyle = '#000000';
+  ctx.font = `600 22px ${ff}`;
   ctx.textAlign = 'center';
-  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 20);
+  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 28);
 
-  // Box name (white, large)
-  ctx.fillStyle = '#ffffff';
-  const nameSize = box.name.length > 18 ? 15 : box.name.length > 12 ? 17 : 20;
+  // Box name (black, large)
+  ctx.fillStyle = '#000000';
+  const nameSize = box.name.length > 18 ? 28 : box.name.length > 12 ? 32 : 38;
   ctx.font = `800 ${nameSize}px ${ff}`;
-  ctx.fillText(truncate(box.name, 22), x + w / 2, y + pad + 50);
+  ctx.fillText(truncate(box.name, 22), x + w / 2, y + pad + 68);
 
   // QR code — centered
   const qrSize = Math.min(w - pad * 4, 160);
@@ -387,37 +388,37 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   // Room
   let infoY = divY + 18;
   if (box.room) {
-    ctx.fillStyle = '#444444';
-    ctx.font = `500 12px ${ff}`;
+    ctx.fillStyle = '#000000';
+    ctx.font = `500 24px ${ff}`;
     ctx.fillText(box.room, x + w / 2, infoY);
-    infoY += 16;
+    infoY += 30;
   }
 
   // Priority badge
   if (box.priority === 'fragile' || box.priority === 'high') {
     const label = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
-    const bgCol = box.priority === 'fragile' ? '#ffeaea' : '#eaffea';
-    const txCol = box.priority === 'fragile' ? '#990000' : '#004400';
+    const bgCol = '#ffffff';
+    const txCol = '#000000';
     const bw = ctx.measureText(label).width + 20;
     ctx.fillStyle = bgCol;
     roundRect(ctx, x + w / 2 - bw / 2, infoY - 12, bw, 20, 10);
     ctx.fill();
     ctx.fillStyle = txCol;
-    ctx.font = `700 11px ${ff}`;
+    ctx.font = `700 22px ${ff}`;
     ctx.fillText(label, x + w / 2, infoY + 2);
-    infoY += 22;
+    infoY += 36;
   }
 
   // Box ID
-  ctx.fillStyle = '#bbbbbb';
-  ctx.font = `400 8px monospace`;
+  ctx.fillStyle = '#000000';
+  ctx.font = `400 16px monospace`;
   ctx.fillText(box.id, x + w / 2, infoY + 6);
 
   // Move name (bottom)
   if (moveName) {
-    ctx.fillStyle = '#cccccc';
-    ctx.font = `400 9px ${ff}`;
-    ctx.fillText(moveName, x + w / 2, y + h - 10);
+    ctx.fillStyle = '#000000';
+    ctx.font = `400 18px ${ff}`;
+    ctx.fillText(moveName, x + w / 2, y + h - 14);
   }
 
   // Dashed divider line on right edge (for cutting)
