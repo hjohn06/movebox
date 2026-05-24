@@ -25,7 +25,7 @@ const Drive = (() => {
 
   // ── Public API ────────────────────────────────────────────────────
   function isConfigured() {
-    return CLIENT_ID !== '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com' && CLIENT_ID.length > 10;
+    return CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_HERE' && CLIENT_ID.length > 10;
   }
 
   function isConnected() {
