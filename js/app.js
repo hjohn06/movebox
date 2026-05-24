@@ -529,6 +529,7 @@ async function showQR(boxId) {
 function wireQRButtons(box) {
   document.getElementById('qr-print-btn')?.addEventListener('click', () => printQR(box.id));
   document.getElementById('qr-save-png-btn')?.addEventListener('click', () => saveLabelPNG(box));
+  document.getElementById('qr-save-pdf-btn')?.addEventListener('click', () => saveLabelPDF(box));
   document.getElementById('qr-save-drive-btn')?.addEventListener('click', () => saveLabelToDrive(box));
   document.getElementById('qr-close-btn')?.addEventListener('click', () => closeSheet('qr-sheet'));
 }
@@ -540,6 +541,18 @@ function saveLabelPNG(box) {
   a.download = `movebox-label-${box.id}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
+}
+
+function saveLabelPDF(box) {
+  const canvas = document.getElementById('label-canvas');
+  if (!canvas) return;
+  if (!window.jspdf) { alert('PDF library not loaded yet. Please try again in a moment.'); return; }
+  const { jsPDF } = window.jspdf;
+  // 4x6 landscape (6in wide x 4in tall)
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'in', format: [4, 6] });
+  const imgData = canvas.toDataURL('image/png');
+  pdf.addImage(imgData, 'PNG', 0, 0, 6, 4);
+  pdf.save(`movebox-label-${box.id}.pdf`);
 }
 
 async function saveLabelToDrive(box) {
