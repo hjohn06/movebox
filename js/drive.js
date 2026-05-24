@@ -10,17 +10,17 @@
 
 const Drive = (() => {
   // ── CONFIG ────────────────────────────────────────────────────────
-  const CLIENT_ID    = window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
-  const SCOPES       = 'https://www.googleapis.com/auth/drive.file';
-  const FOLDER_NAME  = 'MoveBox';
-  const DB_FILENAME  = 'movebox-db.json';
+  const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-u8ih8caikgjsa10p4s2fpsee5bg8u6c5.apps.googleusercontent.com';
+  const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+  const FOLDER_NAME = 'MoveBox';
+  const DB_FILENAME = 'movebox-db.json';
   const REDIRECT_URI = window.location.origin + '/oauth-callback.html';
 
   // ── State ─────────────────────────────────────────────────────────
-  let accessToken  = localStorage.getItem('mb_drive_token')  || null;
-  let tokenExpiry  = parseInt(localStorage.getItem('mb_drive_expiry') || '0');
+  let accessToken = localStorage.getItem('mb_drive_token') || null;
+  let tokenExpiry = parseInt(localStorage.getItem('mb_drive_expiry') || '0');
   let rootFolderId = localStorage.getItem('mb_drive_folder') || null;
-  let dbFileId     = localStorage.getItem('mb_drive_db_id')  || null;
+  let dbFileId = localStorage.getItem('mb_drive_db_id') || null;
   let syncInFlight = false;
 
   // ── Public API ────────────────────────────────────────────────────
@@ -38,11 +38,11 @@ const Drive = (() => {
       return;
     }
     const params = new URLSearchParams({
-      client_id:     CLIENT_ID,
-      redirect_uri:  REDIRECT_URI,
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
       response_type: 'token',
-      scope:         SCOPES,
-      prompt:        'select_account',
+      scope: SCOPES,
+      prompt: 'select_account',
     });
     window.open(
       `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
@@ -52,12 +52,12 @@ const Drive = (() => {
     window.addEventListener('message', function handler(e) {
       if (e.data && e.data.type === 'MB_OAUTH_TOKEN') {
         window.removeEventListener('message', handler);
-        accessToken  = e.data.access_token;
-        tokenExpiry  = Date.now() + e.data.expires_in * 1000;
-        localStorage.setItem('mb_drive_token',  accessToken);
+        accessToken = e.data.access_token;
+        tokenExpiry = Date.now() + e.data.expires_in * 1000;
+        localStorage.setItem('mb_drive_token', accessToken);
         localStorage.setItem('mb_drive_expiry', tokenExpiry);
         rootFolderId = null;
-        dbFileId     = null;
+        dbFileId = null;
         localStorage.removeItem('mb_drive_folder');
         localStorage.removeItem('mb_drive_db_id');
         window.dispatchEvent(new CustomEvent('drive-connected'));
@@ -68,8 +68,8 @@ const Drive = (() => {
   function disconnect() {
     accessToken = null; tokenExpiry = 0;
     rootFolderId = null; dbFileId = null;
-    ['mb_drive_token','mb_drive_expiry','mb_drive_folder','mb_drive_db_id',
-     'mb_drive_last_sync'].forEach(k => localStorage.removeItem(k));
+    ['mb_drive_token', 'mb_drive_expiry', 'mb_drive_folder', 'mb_drive_db_id',
+      'mb_drive_last_sync'].forEach(k => localStorage.removeItem(k));
     window.dispatchEvent(new CustomEvent('drive-disconnected'));
   }
 
@@ -91,8 +91,8 @@ const Drive = (() => {
   // ── Folder helpers ────────────────────────────────────────────────
   async function findOrCreateFolder(name, parentId = null) {
     const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
-            + (parentId ? ` and '${parentId}' in parents` : '');
-    const res  = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+      + (parentId ? ` and '${parentId}' in parents` : '');
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
     const data = await res.json();
     if (data.files?.length) return data.files[0].id;
 
@@ -115,7 +115,7 @@ const Drive = (() => {
   // ── Database file helpers ─────────────────────────────────────────
   async function findDbFile(folderId) {
     const q = `name='${DB_FILENAME}' and '${folderId}' in parents and trashed=false`;
-    const res  = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,modifiedTime)`);
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,modifiedTime)`);
     const data = await res.json();
     return data.files?.[0] || null;
   }
@@ -128,7 +128,7 @@ const Drive = (() => {
 
   async function writeDbFile(folderId, fileId, payload) {
     const content = JSON.stringify(payload, null, 2);
-    const blob    = new Blob([content], { type: 'application/json' });
+    const blob = new Blob([content], { type: 'application/json' });
 
     if (fileId) {
       // Update existing file
@@ -226,7 +226,7 @@ const Drive = (() => {
       if (fileId) {
         const remote = await readDbFile(fileId);
         if (remote) {
-          remoteBoxes    = remote.boxes    || [];
+          remoteBoxes = remote.boxes || [];
           remoteMoveName = remote.moveName || moveName;
         }
       }
@@ -237,10 +237,10 @@ const Drive = (() => {
 
       // Write back
       const payload = {
-        version:   1,
-        moveName:  mergedMoveName,
-        syncedAt:  new Date().toISOString(),
-        boxes:     merged
+        version: 1,
+        moveName: mergedMoveName,
+        syncedAt: new Date().toISOString(),
+        boxes: merged
       };
       const newFileId = await writeDbFile(folderId, fileId, payload);
       if (!fileId) {
@@ -251,7 +251,7 @@ const Drive = (() => {
       // Track sync time
       localStorage.setItem('mb_drive_last_sync', Date.now().toString());
 
-      const newCount     = merged.filter(m => !localBoxes.find(l => l.id === m.id)).length;
+      const newCount = merged.filter(m => !localBoxes.find(l => l.id === m.id)).length;
       const updatedCount = merged.filter(m => {
         const l = localBoxes.find(x => x.id === m.id);
         return l && (m.photos || []).length > (l.photos || []).length;
@@ -267,15 +267,15 @@ const Drive = (() => {
   async function uploadPhoto(boxId, boxName, dataUrl, filename) {
     if (!isConnected()) return null;
     try {
-      const folderId    = await getRootFolder();
+      const folderId = await getRootFolder();
       const boxFolderId = await findOrCreateFolder(`${boxId} — ${boxName}`, folderId);
 
-      const arr   = dataUrl.split(',');
-      const mime  = arr[0].match(/:(.*?);/)[1];
-      const bstr  = atob(arr[1]);
+      const arr = dataUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
       const bytes = new Uint8Array(bstr.length);
       for (let i = 0; i < bstr.length; i++) bytes[i] = bstr.charCodeAt(i);
-      const blob  = new Blob([bytes], { type: mime });
+      const blob = new Blob([bytes], { type: mime });
 
       const meta = JSON.stringify({ name: filename, parents: [boxFolderId] });
       const form = new FormData();
