@@ -6,8 +6,9 @@
  */
 
 const AI = (() => {
-  // ── Set this after deploying your Cloudflare Worker ──────────────
+  // ── Set these after deploying your Cloudflare Worker ─────────────
   const WORKER_URL = window.MOVEBOX_AI_PROXY || 'https://movebox-ai-proxy.hjohn06.workers.dev';
+  const TOKEN      = window.MOVEBOX_AI_TOKEN  || '';
 
   function isConfigured() {
     return !WORKER_URL.includes('YOUR-SUBDOMAIN');
@@ -16,7 +17,7 @@ const AI = (() => {
   async function callProxy(body) {
     const res = await fetch(WORKER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-MoveBox-Token': TOKEN },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
