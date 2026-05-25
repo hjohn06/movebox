@@ -427,82 +427,82 @@ async function runAIIdentify(boxId) {
 // Renders one label half onto a canvas context
 // cx,cy = top-left corner, w,h = label dimensions (pixels)
 function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
-  const pad = 18;
+  const s = h / 600;  // scale all sizes relative to original 600px label height
+  const pad = Math.round(18 * s);
   const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
 
-  // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, w, h);
 
   // Header bar
-  const headerH = 96;
+  const headerH = Math.round(96 * s);
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2;
-  roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, 8);
+  ctx.lineWidth = Math.max(1, Math.round(2 * s));
+  roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, Math.round(8 * s));
   ctx.stroke();
 
   // Box number
   ctx.fillStyle = '#000000';
-  ctx.font = `600 28px ${ff}`;
+  ctx.font = `600 ${Math.round(28 * s)}px ${ff}`;
   ctx.textAlign = 'center';
-  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 34);
+  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + Math.round(34 * s));
 
   // Box name
   const displayName = box.labelName || box.name;
-  const nameSize = displayName.length > 18 ? 34 : displayName.length > 12 ? 40 : 48;
-  ctx.font = `800 ${nameSize}px ${ff}`;
-  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + 86);
+  const baseSize = displayName.length > 18 ? 34 : displayName.length > 12 ? 40 : 48;
+  ctx.font = `800 ${Math.round(baseSize * s)}px ${ff}`;
+  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + Math.round(86 * s));
 
-  // QR code — centered, large
-  const qrSize = Math.min(w - pad * 4, 220);
+  // QR code — centered
+  const qrSize = Math.min(w - pad * 4, Math.round(220 * s));
   const qrX = x + (w - qrSize) / 2;
-  const qrY = y + pad + headerH + 14;
+  const qrY = y + pad + headerH + Math.round(14 * s);
   ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
   // Thin divider
-  const divY = qrY + qrSize + 12;
+  const divY = qrY + qrSize + Math.round(12 * s);
   ctx.strokeStyle = '#e0e0e0';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x + pad + 16, divY);
-  ctx.lineTo(x + w - pad - 16, divY);
+  ctx.moveTo(x + pad + Math.round(16 * s), divY);
+  ctx.lineTo(x + w - pad - Math.round(16 * s), divY);
   ctx.stroke();
 
   // Room
-  let infoY = divY + 20;
+  let infoY = divY + Math.round(20 * s);
   if (box.room) {
     ctx.fillStyle = '#000000';
-    ctx.font = `500 30px ${ff}`;
+    ctx.font = `500 ${Math.round(30 * s)}px ${ff}`;
     ctx.fillText(box.room, x + w / 2, infoY);
-    infoY += 38;
+    infoY += Math.round(38 * s);
   }
 
   // Priority badge
   if (box.priority === 'fragile' || box.priority === 'high') {
     const label = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
-    const bw = ctx.measureText(label).width + 24;
+    ctx.font = `700 ${Math.round(26 * s)}px ${ff}`;
+    const bw = ctx.measureText(label).width + Math.round(24 * s);
     ctx.fillStyle = '#ffffff';
-    roundRect(ctx, x + w / 2 - bw / 2, infoY - 14, bw, 24, 12);
+    roundRect(ctx, x + w / 2 - bw / 2, infoY - Math.round(14 * s), bw, Math.round(24 * s), Math.round(12 * s));
     ctx.fill();
     ctx.fillStyle = '#000000';
-    ctx.font = `700 26px ${ff}`;
-    ctx.fillText(label, x + w / 2, infoY + 4);
-    infoY += 42;
+    ctx.fillText(label, x + w / 2, infoY + Math.round(4 * s));
+    infoY += Math.round(42 * s);
   }
 
-  // Box ID — larger and monospace
+  // Box ID
   ctx.fillStyle = '#000000';
-  ctx.font = `500 22px monospace`;
-  ctx.fillText(box.id, x + w / 2, infoY + 8);
+  ctx.font = `500 ${Math.round(22 * s)}px monospace`;
+  ctx.fillText(box.id, x + w / 2, infoY + Math.round(8 * s));
 
   // Move name (bottom)
   if (moveName) {
     ctx.fillStyle = '#000000';
-    ctx.font = `400 22px ${ff}`;
-    ctx.fillText(moveName, x + w / 2, y + h - 16);
+    ctx.font = `400 ${Math.round(22 * s)}px ${ff}`;
+    ctx.fillText(moveName, x + w / 2, y + h - Math.round(16 * s));
   }
 
-  // Dashed divider line on right edge (for cutting)
+  // Dashed cut line on right edge
   ctx.save();
   ctx.setLineDash([4, 3]);
   ctx.strokeStyle = '#dddddd';
@@ -553,19 +553,19 @@ function generateQRCanvas(text, size) {
   });
 }
 
-// Build the full canvas — 4 copies in a 2×2 grid (each label 3×4 in at 150dpi)
+// Build the full canvas — 6 copies in a 2×3 grid (each label 3×2⅔ in at 150dpi)
 async function buildLabelCanvas(box) {
   const DPI = 150;
-  const lw = 3 * DPI;   // 450px — label width
-  const lh = 4 * DPI;   // 600px — label height
-  const W = lw * 2;     // 900px — 2 columns
-  const H = lh * 2;     // 1200px — 2 rows
+  const cols = 2, rows = 3;
+  const W = 6 * DPI;          // 900px — 6in wide
+  const H = 8 * DPI;          // 1200px — 8in tall
+  const lw = W / cols;        // 450px
+  const lh = H / rows;        // 400px
 
   const canvas = document.getElementById('label-canvas');
   canvas.width = W;
   canvas.height = H;
 
-  // Scale for display
   const displayW = Math.min(320, window.innerWidth - 48);
   canvas.style.width = displayW + 'px';
   canvas.style.height = Math.round(displayW * H / W) + 'px';
@@ -578,21 +578,23 @@ async function buildLabelCanvas(box) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  drawLabelOnCanvas(ctx, box, qrImg, 0,  0,  lw, lh);
-  drawLabelOnCanvas(ctx, box, qrImg, lw, 0,  lw, lh);
-  drawLabelOnCanvas(ctx, box, qrImg, 0,  lh, lw, lh);
-  drawLabelOnCanvas(ctx, box, qrImg, lw, lh, lw, lh);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      drawLabelOnCanvas(ctx, box, qrImg, col * lw, row * lh, lw, lh);
+    }
+  }
 
-  // Horizontal cut line between rows
-  const pad = 20;
+  // Horizontal cut lines between rows
   ctx.save();
   ctx.setLineDash([4, 3]);
   ctx.strokeStyle = '#dddddd';
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(pad, H / 2);
-  ctx.lineTo(W - pad, H / 2);
-  ctx.stroke();
+  for (let row = 1; row < rows; row++) {
+    ctx.beginPath();
+    ctx.moveTo(20, row * lh);
+    ctx.lineTo(W - 20, row * lh);
+    ctx.stroke();
+  }
   ctx.restore();
 
   return canvas;
@@ -629,7 +631,7 @@ async function showQR(boxId) {
   // Build canvas after sheet opens
   setTimeout(async () => {
     document.getElementById('label-preview-wrap').innerHTML =
-      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">4 copies · 3×4 label</p>';
+      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">6 copies · 3×2⅔ label</p>';
     await buildLabelCanvas(box);
     wireQRButtons(box);
   }, 100);
