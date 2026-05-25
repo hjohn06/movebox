@@ -32,8 +32,14 @@ window.addEventListener('drive-disconnected', () => updateDriveUI());
 // ── Persistence ────────────────────────────────────────────────────────────
 let _syncDebounce = null;
 function saveBoxes() {
-  localStorage.setItem('mb_boxes', JSON.stringify(boxes));
-  localStorage.setItem('mb_movename', moveName);
+  try {
+    localStorage.setItem('mb_boxes', JSON.stringify(boxes));
+    localStorage.setItem('mb_movename', moveName);
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      alert('Storage full — photo could not be saved. Try deleting photos from other boxes to free space.');
+    }
+  }
   updateNavCount();
   // stamp last-write time on current box if editing
   if (currentBoxId) {
@@ -324,13 +330,30 @@ function renderBoxDetailEdit(boxId) {
 }
 
 // ── Photos ─────────────────────────────────────────────────────────────────
+function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cvs.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 function addPhoto(boxId) {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const data = await readFileAsDataURL(file);
+    const raw = await readFileAsDataURL(file);
+    const data = await compressImage(raw);
     const box = boxes.find(b => b.id === boxId);
     if (!box) return;
     if (!box.photos) box.photos = [];
