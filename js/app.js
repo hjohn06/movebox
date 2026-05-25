@@ -198,11 +198,21 @@ function renderBoxDetail(boxId) {
   const pLabel = box.priority === 'high' ? '🟢 Open first' : box.priority === 'fragile' ? '🔴 Fragile' : 'Normal';
   const nPh = (box.photos || []).length;
 
-  const photosGrid = (box.photos || []).map((p, i) => `
+  const photosGrid = (box.photos || []).map((p, i) => {
+    if (p.data) {
+      return `
     <div class="photo-thumb">
       <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
       <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
-    </div>`).join('');
+    </div>`;
+    }
+    return `
+    <div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface2);">
+      ${p.driveLink ? `<a href="${p.driveLink}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);text-decoration:none;font-size:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Drive</a>` : ''}
+      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo" style="position:absolute;top:3px;right:3px;">×</button>
+    </div>`;
+  }).join('');
 
   const driveStatus = Drive.isConnected()
     ? `<div class="status-bar connected" style="margin:0;pointer-events:none;"><div class="status-dot"></div><span>Photos sync to Google Drive</span></div>`
@@ -369,7 +379,10 @@ function addPhoto(boxId) {
       if (link) {
         const b2 = boxes.find(b => b.id === boxId);
         const ph = b2?.photos[b2.photos.length - 1];
-        if (ph) ph.driveLink = link;
+        if (ph) {
+          ph.driveLink = link;
+          ph.data = null;  // free localStorage — photo is safely on Drive
+        }
         saveBoxes();
       }
       hideToast();
@@ -803,6 +816,10 @@ async function runSync({ silent = false } = {}) {
     const result = await Drive.syncDatabase(boxes, moveName, localDeleted);
     boxes = result.merged;
     moveName = result.mergedMoveName || moveName;
+    // Strip photo data for any photo already on Drive — free localStorage space
+    boxes.forEach(box => {
+      (box.photos || []).forEach(p => { if (p.driveLink && p.data) p.data = null; });
+    });
     localStorage.setItem('mb_boxes', JSON.stringify(boxes));
     localStorage.setItem('mb_movename', moveName);
     if (result.mergedDeleted) {
