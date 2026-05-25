@@ -533,18 +533,19 @@ function generateQRCanvas(text, size) {
   });
 }
 
-// Build the full 4x6 canvas (2 copies side by side) for a box
+// Build the full canvas — 4 copies in a 2×2 grid (each label 3×4 in at 150dpi)
 async function buildLabelCanvas(box) {
-  // 4x6 at 150dpi → 600 x 900px  (landscape: 6in wide × 4in tall)
   const DPI = 150;
-  const W = 6 * DPI;   // 900px
-  const H = 4 * DPI;   // 600px
+  const lw = 3 * DPI;   // 450px — label width
+  const lh = 4 * DPI;   // 600px — label height
+  const W = lw * 2;     // 900px — 2 columns
+  const H = lh * 2;     // 1200px — 2 rows
 
   const canvas = document.getElementById('label-canvas');
   canvas.width = W;
   canvas.height = H;
 
-  // Scale for display (fit in sheet bottom drawer ~320px wide)
+  // Scale for display
   const displayW = Math.min(320, window.innerWidth - 48);
   canvas.style.width = displayW + 'px';
   canvas.style.height = Math.round(displayW * H / W) + 'px';
@@ -553,14 +554,26 @@ async function buildLabelCanvas(box) {
   ctx.fillStyle = '#f5f5f5';
   ctx.fillRect(0, 0, W, H);
 
-  // Generate QR code image
   const qrImg = await generateQRCanvas(box.id, 200);
 
-  // Draw two identical label halves
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  drawLabelOnCanvas(ctx, box, qrImg, 0, 0, W / 2, H);
-  drawLabelOnCanvas(ctx, box, qrImg, W / 2, 0, W / 2, H);
+  drawLabelOnCanvas(ctx, box, qrImg, 0,  0,  lw, lh);
+  drawLabelOnCanvas(ctx, box, qrImg, lw, 0,  lw, lh);
+  drawLabelOnCanvas(ctx, box, qrImg, 0,  lh, lw, lh);
+  drawLabelOnCanvas(ctx, box, qrImg, lw, lh, lw, lh);
+
+  // Horizontal cut line between rows
+  const pad = 20;
+  ctx.save();
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = '#dddddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, H / 2);
+  ctx.lineTo(W - pad, H / 2);
+  ctx.stroke();
+  ctx.restore();
 
   return canvas;
 }
@@ -596,7 +609,7 @@ async function showQR(boxId) {
   // Build canvas after sheet opens
   setTimeout(async () => {
     document.getElementById('label-preview-wrap').innerHTML =
-      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">2 copies · 4×6 label</p>';
+      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">4 copies · 3×4 label</p>';
     await buildLabelCanvas(box);
     wireQRButtons(box);
   }, 100);
@@ -624,10 +637,10 @@ function saveLabelPDF(box) {
   if (!canvas) return;
   if (!window.jspdf) { alert('PDF library not loaded yet. Please try again in a moment.'); return; }
   const { jsPDF } = window.jspdf;
-  // 4x6 landscape (6in wide x 4in tall)
-  const pdf = new jsPDF({ orientation: 'landscape', unit: 'in', format: [4, 6] });
+  // 6x8 portrait (6in wide x 8in tall — 4 labels, 2×2 grid)
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [6, 8] });
   const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, 6, 4);
+  pdf.addImage(imgData, 'PNG', 0, 0, 6, 8);
   pdf.save(`movebox-label-${box.id}.pdf`);
 }
 
