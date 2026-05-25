@@ -404,35 +404,34 @@ async function runAIIdentify(boxId) {
 // Renders one label half onto a canvas context
 // cx,cy = top-left corner, w,h = label dimensions (pixels)
 function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
-  const pad = 20;
+  const pad = 18;
   const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
 
   // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, w, h);
 
-  // Header bar - black border only
-  const headerH = 80;
+  // Header bar
+  const headerH = 96;
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 2;
   roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, 8);
   ctx.stroke();
 
-  // Box number label (black)
+  // Box number
   ctx.fillStyle = '#000000';
-  ctx.font = `600 22px ${ff}`;
+  ctx.font = `600 28px ${ff}`;
   ctx.textAlign = 'center';
-  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 28);
+  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + 34);
 
-  // Box name (black, large)
+  // Box name
   const displayName = box.labelName || box.name;
-  ctx.fillStyle = '#000000';
-  const nameSize = displayName.length > 18 ? 28 : displayName.length > 12 ? 32 : 38;
+  const nameSize = displayName.length > 18 ? 34 : displayName.length > 12 ? 40 : 48;
   ctx.font = `800 ${nameSize}px ${ff}`;
-  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + 68);
+  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + 86);
 
-  // QR code — centered
-  const qrSize = Math.min(w - pad * 4, 160);
+  // QR code — centered, large
+  const qrSize = Math.min(w - pad * 4, 220);
   const qrX = x + (w - qrSize) / 2;
   const qrY = y + pad + headerH + 14;
   ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
@@ -442,44 +441,42 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.strokeStyle = '#e0e0e0';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x + pad + 20, divY);
-  ctx.lineTo(x + w - pad - 20, divY);
+  ctx.moveTo(x + pad + 16, divY);
+  ctx.lineTo(x + w - pad - 16, divY);
   ctx.stroke();
 
   // Room
-  let infoY = divY + 18;
+  let infoY = divY + 20;
   if (box.room) {
     ctx.fillStyle = '#000000';
-    ctx.font = `500 24px ${ff}`;
+    ctx.font = `500 30px ${ff}`;
     ctx.fillText(box.room, x + w / 2, infoY);
-    infoY += 30;
+    infoY += 38;
   }
 
   // Priority badge
   if (box.priority === 'fragile' || box.priority === 'high') {
     const label = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
-    const bgCol = '#ffffff';
-    const txCol = '#000000';
-    const bw = ctx.measureText(label).width + 20;
-    ctx.fillStyle = bgCol;
-    roundRect(ctx, x + w / 2 - bw / 2, infoY - 12, bw, 20, 10);
+    const bw = ctx.measureText(label).width + 24;
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, x + w / 2 - bw / 2, infoY - 14, bw, 24, 12);
     ctx.fill();
-    ctx.fillStyle = txCol;
-    ctx.font = `700 22px ${ff}`;
-    ctx.fillText(label, x + w / 2, infoY + 2);
-    infoY += 36;
+    ctx.fillStyle = '#000000';
+    ctx.font = `700 26px ${ff}`;
+    ctx.fillText(label, x + w / 2, infoY + 4);
+    infoY += 42;
   }
 
-  // Box ID
+  // Box ID — larger and monospace
   ctx.fillStyle = '#000000';
-  ctx.font = `400 16px monospace`;
-  ctx.fillText(box.id, x + w / 2, infoY + 6);
+  ctx.font = `500 22px monospace`;
+  ctx.fillText(box.id, x + w / 2, infoY + 8);
 
   // Move name (bottom)
   if (moveName) {
     ctx.fillStyle = '#000000';
-    ctx.font = `400 18px ${ff}`;
-    ctx.fillText(moveName, x + w / 2, y + h - 14);
+    ctx.font = `400 22px ${ff}`;
+    ctx.fillText(moveName, x + w / 2, y + h - 16);
   }
 
   // Dashed divider line on right edge (for cutting)
@@ -554,7 +551,7 @@ async function buildLabelCanvas(box) {
   ctx.fillStyle = '#f5f5f5';
   ctx.fillRect(0, 0, W, H);
 
-  const qrImg = await generateQRCanvas(box.id, 200);
+  const qrImg = await generateQRCanvas(box.id, 300);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
