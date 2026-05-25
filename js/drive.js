@@ -312,12 +312,31 @@ const Drive = (() => {
         { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form }
       );
       const d = await res.json();
-      return d.webViewLink || null;
+      return { link: d.webViewLink || null, fileId: d.id || null };
     } catch (e) {
       console.error('[Drive] Upload error:', e);
       return null;
     }
   }
 
-  return { isConfigured, isConnected, connect, disconnect, uploadPhoto, syncDatabase, lastSyncTime };
+  // ── PUBLIC: Fetch photo binary from Drive ─────────────────────────
+  async function fetchPhotoData(fileId) {
+    if (!isConnected() || !fileId) return null;
+    try {
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error('[Drive] Fetch photo error:', e);
+      return null;
+    }
+  }
+
+  return { isConfigured, isConnected, connect, disconnect, uploadPhoto, fetchPhotoData, syncDatabase, lastSyncTime };
 })();

@@ -188,6 +188,7 @@ function openBoxDetail(boxId) {
   currentBoxId = boxId;
   renderBoxDetail(boxId);
   openSheet('detail-sheet');
+  loadDrivePhotos(boxId);
 }
 
 function renderBoxDetail(boxId) {
@@ -375,12 +376,13 @@ function addPhoto(boxId) {
 
     if (Drive.isConnected()) {
       showToast('Uploading to Drive…');
-      const link = await Drive.uploadPhoto(boxId, box.name, data, file.name);
-      if (link) {
+      const result = await Drive.uploadPhoto(boxId, box.name, data, file.name);
+      if (result) {
         const b2 = boxes.find(b => b.id === boxId);
         const ph = b2?.photos[b2.photos.length - 1];
         if (ph) {
-          ph.driveLink = link;
+          ph.driveLink = result.link;
+          ph.driveFileId = result.fileId;
           ph.data = null;  // free localStorage — photo is safely on Drive
         }
         saveBoxes();
@@ -404,11 +406,68 @@ function deletePhoto(boxId, idx) {
   renderBoxList();
 }
 
-function viewPhoto(boxId, idx) {
+async function viewPhoto(boxId, idx) {
   const box = boxes.find(b => b.id === boxId);
-  if (!box?.photos[idx]) return;
+  const photo = box?.photos[idx];
+  if (!photo) return;
+
+  let src = photo.data;
+  if (!src && Drive.isConnected()) {
+    const fileId = photo.driveFileId || extractDriveFileId(photo.driveLink);
+    if (fileId) src = await Drive.fetchPhotoData(fileId);
+  }
+  if (!src) return;
+
   const w = window.open();
-  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${box.photos[idx].data}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>`);
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>`);
+}
+
+function extractDriveFileId(link) {
+  return link?.match(/\/d\/([^/?]+)/)?.[1] || null;
+}
+
+async function loadDrivePhotos(boxId) {
+  if (!Drive.isConnected()) return;
+  const box = boxes.find(b => b.id === boxId);
+  if (!box?.photos?.length) return;
+
+  const needLoad = box.photos.filter(p => !p.data && (p.driveFileId || p.driveLink));
+  if (!needLoad.length) return;
+
+  await Promise.all(needLoad.map(async (p) => {
+    const fileId = p.driveFileId || extractDriveFileId(p.driveLink);
+    if (!fileId) return;
+    const data = await Drive.fetchPhotoData(fileId);
+    if (data) p.data = data;  // in-memory only — not persisted to localStorage
+  }));
+
+  // Re-render photo grid with loaded images
+  const grid = document.getElementById(`photo-grid-${boxId}`);
+  if (!grid) return;
+  const photosHtml = box.photos.map((p, i) => {
+    if (p.data) {
+      return `
+    <div class="photo-thumb">
+      <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
+      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
+    </div>`;
+    }
+    return `
+    <div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface2);">
+      ${p.driveLink ? `<a href="${p.driveLink}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);text-decoration:none;font-size:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Drive</a>` : ''}
+      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo" style="position:absolute;top:3px;right:3px;">×</button>
+    </div>`;
+  }).join('');
+  grid.innerHTML = photosHtml + `<div class="photo-add" id="photo-add-cell" data-box="${boxId}" title="Add photo">+</div>`;
+
+  document.getElementById('photo-add-cell')?.addEventListener('click', () => addPhoto(boxId));
+  document.querySelectorAll(`.photo-del[data-box="${boxId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); deletePhoto(boxId, parseInt(btn.dataset.idx)); });
+  });
+  document.querySelectorAll(`[data-box="${boxId}"][data-idx]`).forEach(img => {
+    if (img.tagName === 'IMG') img.addEventListener('click', () => viewPhoto(boxId, parseInt(img.dataset.idx)));
+  });
 }
 
 // ── AI Identify ────────────────────────────────────────────────────────────
@@ -421,7 +480,8 @@ async function runAIIdentify(boxId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Identifying…'; }
 
   try {
-    const summary = await AI.identifyContents(box.photos);
+    await loadDrivePhotos(boxId);
+    const summary = await AI.identifyContents(box.photos.filter(p => p.data));
     box.aiSummary = summary;
     box.aiIdentified = true;
     saveBoxes();
