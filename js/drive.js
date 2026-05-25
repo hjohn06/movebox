@@ -10,8 +10,7 @@
 
 const Drive = (() => {
   // ── CONFIG ────────────────────────────────────────────────────────
-  // const CLIENT_ID = window.GOOGLE_CLIENT_ID || '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
-  const CLIENT_ID = '919532466209-l130b42mb6maolglrlupb7td3qpb0o0o.apps.googleusercontent.com';
+  const CLIENT_ID = window.GOOGLE_CLIENT_ID || '';
 
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   const FOLDER_NAME = 'MoveBox';
@@ -27,7 +26,7 @@ const Drive = (() => {
 
   // ── Public API ────────────────────────────────────────────────────
   function isConfigured() {
-    return CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_HERE' && CLIENT_ID.length > 10;
+    return !!CLIENT_ID;
   }
 
   function isConnected() {
@@ -185,14 +184,17 @@ const Drive = (() => {
         const localNewer = (lb.updatedAt || lb.created || 0) >= (rb.updatedAt || rb.created || 0);
         const base = localNewer ? { ...lb } : { ...rb };
 
-        // Photo union by timestamp
+        // Photo union by timestamp, excluding any ts deleted on either side
+        const deletedPhotoTs = new Set([...(lb.deletedPhotos || []), ...(rb.deletedPhotos || [])]);
         const allPhotos = [...(lb.photos || []), ...(rb.photos || [])];
         const seenTs = new Set();
         base.photos = allPhotos.filter(p => {
+          if (deletedPhotoTs.has(p.ts)) return false;
           if (seenTs.has(p.ts)) return false;
           seenTs.add(p.ts);
           return true;
         }).sort((a, b) => a.ts - b.ts);
+        if (deletedPhotoTs.size > 0) base.deletedPhotos = [...deletedPhotoTs];
 
         byId[rb.id] = base;
       }

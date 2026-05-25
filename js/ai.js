@@ -7,11 +7,11 @@
 
 const AI = (() => {
   // ── Set these after deploying your Cloudflare Worker ─────────────
-  const WORKER_URL = window.MOVEBOX_AI_PROXY || 'https://movebox-ai-proxy.hjohn06.workers.dev';
+  const WORKER_URL = window.MOVEBOX_AI_PROXY || '';
   const TOKEN      = window.MOVEBOX_AI_TOKEN  || '';
 
   function isConfigured() {
-    return !WORKER_URL.includes('YOUR-SUBDOMAIN');
+    return !!WORKER_URL;
   }
 
   async function callProxy(body) {
