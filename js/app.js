@@ -247,6 +247,7 @@ function renderBoxDetail(boxId) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M17 14v3h3M14 20h3"/></svg>
         QR Code
       </button>
+      <button class="btn btn-sm" id="detail-edit-btn" data-box="${boxId}">Edit</button>
       <button class="btn btn-sm btn-danger" id="detail-del-btn" data-box="${boxId}">Delete box</button>
     </div>
     <p style="font-size:10px;color:var(--text3);margin-top:12px;font-family:monospace;">${boxId}</p>
@@ -257,6 +258,7 @@ function renderBoxDetail(boxId) {
   document.getElementById('photo-add-cell')?.addEventListener('click', () => addPhoto(boxId));
   document.getElementById('ai-identify-btn')?.addEventListener('click', () => runAIIdentify(boxId));
   document.getElementById('detail-qr-btn')?.addEventListener('click', () => { closeSheet('detail-sheet'); setTimeout(() => showQR(boxId), 300); });
+  document.getElementById('detail-edit-btn')?.addEventListener('click', () => renderBoxDetailEdit(boxId));
   document.getElementById('detail-del-btn')?.addEventListener('click', () => deleteBox(boxId));
 
   document.querySelectorAll(`.photo-del[data-box="${boxId}"]`).forEach(btn => {
@@ -264,6 +266,60 @@ function renderBoxDetail(boxId) {
   });
   document.querySelectorAll(`[data-box="${boxId}"][data-idx]`).forEach(img => {
     if (img.tagName === 'IMG') img.addEventListener('click', () => viewPhoto(boxId, parseInt(img.dataset.idx)));
+  });
+}
+
+function renderBoxDetailEdit(boxId) {
+  const box = boxes.find(b => b.id === boxId);
+  if (!box) return;
+  let editPriority = box.priority || 'normal';
+
+  const roomOptions = ['', 'Kitchen', 'Living room', 'Master bedroom', 'Bedroom', 'Bathroom', 'Office', 'Garage', 'Basement', 'Storage', 'Other'];
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="sheet-title" style="margin-bottom:16px;">Edit Box</div>
+    <div class="field"><label>Box name</label><input type="text" id="edit-name" value="${escHtml(box.name)}"></div>
+    <div class="field">
+      <label>Room</label>
+      <select id="edit-room">
+        ${roomOptions.map(r => `<option value="${r}"${r === box.room ? ' selected' : ''}>${r || '— Select room —'}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Priority</label>
+      <div class="seg-control" id="edit-priority">
+        <button class="seg${editPriority === 'normal' ? ' active' : ''}" data-val="normal">Normal</button>
+        <button class="seg${editPriority === 'high' ? ' active' : ''}" data-val="high">Open first</button>
+        <button class="seg${editPriority === 'fragile' ? ' active' : ''}" data-val="fragile">Fragile</button>
+      </div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="edit-notes" rows="2">${escHtml(box.notes || '')}</textarea></div>
+    <div class="sheet-actions" style="margin-top:16px;">
+      <button class="btn btn-full" id="edit-cancel-btn">Cancel</button>
+      <button class="btn btn-primary btn-full" id="edit-save-btn">Save</button>
+    </div>
+  `;
+
+  document.querySelectorAll('#edit-priority .seg').forEach(s => {
+    s.addEventListener('click', () => {
+      document.querySelectorAll('#edit-priority .seg').forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+      editPriority = s.dataset.val;
+    });
+  });
+
+  document.getElementById('edit-cancel-btn').addEventListener('click', () => renderBoxDetail(boxId));
+  document.getElementById('edit-save-btn').addEventListener('click', () => {
+    const name = document.getElementById('edit-name').value.trim();
+    if (!name) { document.getElementById('edit-name').focus(); return; }
+    box.name = name;
+    box.room = document.getElementById('edit-room').value;
+    box.notes = document.getElementById('edit-notes').value.trim();
+    box.priority = editPriority;
+    box.updatedAt = Date.now();
+    saveBoxes();
+    renderBoxList();
+    renderBoxDetail(boxId);
   });
 }
 
@@ -302,7 +358,11 @@ function addPhoto(boxId) {
 function deletePhoto(boxId, idx) {
   const box = boxes.find(b => b.id === boxId);
   if (!box) return;
-  box.photos.splice(idx, 1);
+  const [removed] = box.photos.splice(idx, 1);
+  if (removed?.ts) {
+    if (!box.deletedPhotos) box.deletedPhotos = [];
+    if (!box.deletedPhotos.includes(removed.ts)) box.deletedPhotos.push(removed.ts);
+  }
   saveBoxes();
   renderBoxDetail(boxId);
   renderBoxList();

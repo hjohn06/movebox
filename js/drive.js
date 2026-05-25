@@ -185,14 +185,17 @@ const Drive = (() => {
         const localNewer = (lb.updatedAt || lb.created || 0) >= (rb.updatedAt || rb.created || 0);
         const base = localNewer ? { ...lb } : { ...rb };
 
-        // Photo union by timestamp
+        // Photo union by timestamp, excluding any ts deleted on either side
+        const deletedPhotoTs = new Set([...(lb.deletedPhotos || []), ...(rb.deletedPhotos || [])]);
         const allPhotos = [...(lb.photos || []), ...(rb.photos || [])];
         const seenTs = new Set();
         base.photos = allPhotos.filter(p => {
+          if (deletedPhotoTs.has(p.ts)) return false;
           if (seenTs.has(p.ts)) return false;
           seenTs.add(p.ts);
           return true;
         }).sort((a, b) => a.ts - b.ts);
+        if (deletedPhotoTs.size > 0) base.deletedPhotos = [...deletedPhotoTs];
 
         byId[rb.id] = base;
       }
