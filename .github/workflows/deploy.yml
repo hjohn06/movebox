@@ -1,0 +1,41 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject secrets into config.js
+        run: |
+          cat > config.js << 'ENDOFFILE'
+          window.MOVEBOX_AI_TOKEN = '${{ secrets.MOVEBOX_AI_TOKEN }}';
+          window.MOVEBOX_AI_PROXY = '${{ secrets.MOVEBOX_AI_PROXY }}';
+          window.GOOGLE_CLIENT_ID = '${{ secrets.GOOGLE_CLIENT_ID }}';
+          ENDOFFILE
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
