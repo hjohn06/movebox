@@ -199,21 +199,7 @@ function renderBoxDetail(boxId) {
   const pLabel = box.priority === 'high' ? '🟢 Open first' : box.priority === 'fragile' ? '🔴 Fragile' : 'Normal';
   const nPh = (box.photos || []).length;
 
-  const photosGrid = (box.photos || []).map((p, i) => {
-    if (p.data) {
-      return `
-    <div class="photo-thumb">
-      <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
-      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
-    </div>`;
-    }
-    return `
-    <div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface2);">
-      ${p.driveLink ? `<a href="${p.driveLink}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);text-decoration:none;font-size:10px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Drive</a>` : ''}
-      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo" style="position:absolute;top:3px;right:3px;">×</button>
-    </div>`;
-  }).join('');
+  const photosGrid = (box.photos || []).map((p, i) => photoThumbHtml(p, i, boxId)).join('');
 
   const driveStatus = Drive.isConnected()
     ? `<div class="status-bar connected" style="margin:0;pointer-events:none;"><div class="status-dot"></div><span>Photos sync to Google Drive</span></div>`
@@ -240,12 +226,19 @@ function renderBoxDetail(boxId) {
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <h3>Photos <span style="color:var(--text3);font-weight:400;font-size:12px;">${nPh}</span></h3>
-      <button class="btn btn-sm" id="add-photo-btn" data-box="${boxId}">+ Add photo</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm" id="add-photo-camera-btn" data-box="${boxId}" title="Take photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        <button class="btn btn-sm" id="add-photo-gallery-btn" data-box="${boxId}" title="Choose from library">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="photo-grid" id="photo-grid-${boxId}">
       ${photosGrid}
-      <div class="photo-add" id="photo-add-cell" data-box="${boxId}" title="Add photo">+</div>
+      ${photoAddCells(boxId)}
     </div>
 
     ${nPh > 0 ? `
@@ -271,19 +264,13 @@ function renderBoxDetail(boxId) {
   `;
 
   // Wire detail events
-  document.getElementById('add-photo-btn')?.addEventListener('click', () => addPhoto(boxId));
-  document.getElementById('photo-add-cell')?.addEventListener('click', () => addPhoto(boxId));
+  document.getElementById('add-photo-camera-btn')?.addEventListener('click', () => addPhoto(boxId, true));
+  document.getElementById('add-photo-gallery-btn')?.addEventListener('click', () => addPhoto(boxId, false));
+  wirePhotoGrid(boxId);
   document.getElementById('ai-identify-btn')?.addEventListener('click', () => runAIIdentify(boxId));
   document.getElementById('detail-qr-btn')?.addEventListener('click', () => { closeSheet('detail-sheet'); setTimeout(() => showQR(boxId), 300); });
   document.getElementById('detail-edit-btn')?.addEventListener('click', () => renderBoxDetailEdit(boxId));
   document.getElementById('detail-del-btn')?.addEventListener('click', () => deleteBox(boxId));
-
-  document.querySelectorAll(`.photo-del[data-box="${boxId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); deletePhoto(boxId, parseInt(btn.dataset.idx)); });
-  });
-  document.querySelectorAll(`[data-box="${boxId}"][data-idx]`).forEach(img => {
-    if (img.tagName === 'IMG') img.addEventListener('click', () => viewPhoto(boxId, parseInt(img.dataset.idx)));
-  });
 }
 
 function renderBoxDetailEdit(boxId) {
@@ -357,9 +344,10 @@ function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
   });
 }
 
-function addPhoto(boxId) {
+function addPhoto(boxId, useCamera = false) {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.type = 'file'; input.accept = 'image/*';
+  if (useCamera) input.capture = 'environment';
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -426,6 +414,40 @@ function extractDriveFileId(link) {
   return link?.match(/\/d\/([^/?]+)/)?.[1] || null;
 }
 
+function photoThumbHtml(p, i, boxId) {
+  if (p.data) {
+    return `<div class="photo-thumb">
+      <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
+      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
+    </div>`;
+  }
+  return `<div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface2);">
+    ${p.driveLink ? `<a href="${p.driveLink}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);text-decoration:none;font-size:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Drive</a>` : ''}
+    <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo" style="position:absolute;top:3px;right:3px;">×</button>
+  </div>`;
+}
+
+function photoAddCells(boxId) {
+  return `
+    <div class="photo-add" id="photo-add-camera" data-box="${boxId}" title="Take photo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    </div>
+    <div class="photo-add" id="photo-add-gallery" data-box="${boxId}" title="Choose from library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </div>`;
+}
+
+function wirePhotoGrid(boxId) {
+  document.getElementById('photo-add-camera')?.addEventListener('click', () => addPhoto(boxId, true));
+  document.getElementById('photo-add-gallery')?.addEventListener('click', () => addPhoto(boxId, false));
+  document.querySelectorAll(`.photo-del[data-box="${boxId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); deletePhoto(boxId, parseInt(btn.dataset.idx)); });
+  });
+  document.querySelectorAll(`[data-box="${boxId}"][data-idx]`).forEach(img => {
+    if (img.tagName === 'IMG') img.addEventListener('click', () => viewPhoto(boxId, parseInt(img.dataset.idx)));
+  });
+}
+
 async function loadDrivePhotos(boxId) {
   if (!Drive.isConnected()) return;
   const box = boxes.find(b => b.id === boxId);
@@ -441,33 +463,10 @@ async function loadDrivePhotos(boxId) {
     if (data) p.data = data;  // in-memory only — not persisted to localStorage
   }));
 
-  // Re-render photo grid with loaded images
   const grid = document.getElementById(`photo-grid-${boxId}`);
   if (!grid) return;
-  const photosHtml = box.photos.map((p, i) => {
-    if (p.data) {
-      return `
-    <div class="photo-thumb">
-      <img src="${p.data}" alt="Photo ${i + 1}" loading="lazy" data-box="${boxId}" data-idx="${i}">
-      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo">×</button>
-    </div>`;
-    }
-    return `
-    <div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface2);">
-      ${p.driveLink ? `<a href="${p.driveLink}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text3);text-decoration:none;font-size:10px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Drive</a>` : ''}
-      <button class="photo-del" data-box="${boxId}" data-idx="${i}" title="Delete photo" style="position:absolute;top:3px;right:3px;">×</button>
-    </div>`;
-  }).join('');
-  grid.innerHTML = photosHtml + `<div class="photo-add" id="photo-add-cell" data-box="${boxId}" title="Add photo">+</div>`;
-
-  document.getElementById('photo-add-cell')?.addEventListener('click', () => addPhoto(boxId));
-  document.querySelectorAll(`.photo-del[data-box="${boxId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); deletePhoto(boxId, parseInt(btn.dataset.idx)); });
-  });
-  document.querySelectorAll(`[data-box="${boxId}"][data-idx]`).forEach(img => {
-    if (img.tagName === 'IMG') img.addEventListener('click', () => viewPhoto(boxId, parseInt(img.dataset.idx)));
-  });
+  grid.innerHTML = box.photos.map((p, i) => photoThumbHtml(p, i, boxId)).join('') + photoAddCells(boxId);
+  wirePhotoGrid(boxId);
 }
 
 // ── AI Identify ────────────────────────────────────────────────────────────
