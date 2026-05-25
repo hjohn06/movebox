@@ -184,16 +184,14 @@ const Drive = (() => {
         const localNewer = (lb.updatedAt || lb.created || 0) >= (rb.updatedAt || rb.created || 0);
         const base = localNewer ? { ...lb } : { ...rb };
 
-        // Photo union by timestamp, excluding any ts deleted on either side
+        // Photo union by timestamp, excluding deleted. Local copy wins when
+        // both sides have the same ts (local has data, remote has metadata only).
         const deletedPhotoTs = new Set([...(lb.deletedPhotos || []), ...(rb.deletedPhotos || [])]);
-        const allPhotos = [...(lb.photos || []), ...(rb.photos || [])];
-        const seenTs = new Set();
-        base.photos = allPhotos.filter(p => {
-          if (deletedPhotoTs.has(p.ts)) return false;
-          if (seenTs.has(p.ts)) return false;
-          seenTs.add(p.ts);
-          return true;
-        }).sort((a, b) => a.ts - b.ts);
+        const byTs = {};
+        for (const p of [...(rb.photos || []), ...(lb.photos || [])]) {
+          if (!deletedPhotoTs.has(p.ts)) byTs[p.ts] = p.data ? p : (byTs[p.ts] || p);
+        }
+        base.photos = Object.values(byTs).sort((a, b) => a.ts - b.ts);
         if (deletedPhotoTs.size > 0) base.deletedPhotos = [...deletedPhotoTs];
 
         byId[rb.id] = base;
@@ -256,12 +254,17 @@ const Drive = (() => {
       const { boxes: merged, deletedBoxes: mergedDeleted } = mergeBoxes(localBoxes, remoteBoxes, localDeleted, remoteDeleted);
       const mergedMoveName = moveName || remoteMoveName;
 
-      // Write back
+      // Write back — strip photo data so the DB file stays small.
+      // Photo data lives only in localStorage; Drive stores metadata only.
+      const boxesForDrive = merged.map(box => ({
+        ...box,
+        photos: (box.photos || []).map(({ data, ...meta }) => meta)
+      }));
       const payload = {
         version: 1,
         moveName: mergedMoveName,
         syncedAt: new Date().toISOString(),
-        boxes: merged,
+        boxes: boxesForDrive,
         deletedBoxes: mergedDeleted
       };
       const newFileId = await writeDbFile(folderId, fileId, payload);
