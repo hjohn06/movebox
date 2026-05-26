@@ -499,8 +499,9 @@ async function runAIIdentify(boxId) {
 // Renders one label half onto a canvas context
 // cx,cy = top-left corner, w,h = label dimensions (pixels)
 function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
-  const s = h / 600;  // scale all sizes relative to original 600px label height
-  const pad = Math.round(18 * s);
+  // s = h/429 gives 40% bigger content vs the original h/600 reference
+  const s = h / 429;
+  const pad = Math.round(14 * s);
   const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
 
   ctx.fillStyle = '#ffffff';
@@ -525,14 +526,14 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.font = `800 ${Math.round(baseSize * s)}px ${ff}`;
   ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + Math.round(86 * s));
 
-  // QR code — centered
+  // QR code — centered, tighter gap to header to reclaim vertical space
   const qrSize = Math.min(w - pad * 4, Math.round(220 * s));
   const qrX = x + (w - qrSize) / 2;
-  const qrY = y + pad + headerH + Math.round(14 * s);
+  const qrY = y + pad + headerH + Math.round(8 * s);
   ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
   // Thin divider
-  const divY = qrY + qrSize + Math.round(12 * s);
+  const divY = qrY + qrSize + Math.round(8 * s);
   ctx.strokeStyle = '#e0e0e0';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -541,12 +542,12 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.stroke();
 
   // Room
-  let infoY = divY + Math.round(20 * s);
+  let infoY = divY + Math.round(14 * s);
   if (box.room) {
     ctx.fillStyle = '#000000';
     ctx.font = `500 ${Math.round(30 * s)}px ${ff}`;
     ctx.fillText(box.room, x + w / 2, infoY);
-    infoY += Math.round(38 * s);
+    infoY += Math.round(32 * s);
   }
 
   // Priority badge
@@ -559,19 +560,6 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
     ctx.fill();
     ctx.fillStyle = '#000000';
     ctx.fillText(label, x + w / 2, infoY + Math.round(4 * s));
-    infoY += Math.round(42 * s);
-  }
-
-  // Box ID
-  ctx.fillStyle = '#000000';
-  ctx.font = `500 ${Math.round(22 * s)}px monospace`;
-  ctx.fillText(box.id, x + w / 2, infoY + Math.round(8 * s));
-
-  // Move name (bottom)
-  if (moveName) {
-    ctx.fillStyle = '#000000';
-    ctx.font = `400 ${Math.round(22 * s)}px ${ff}`;
-    ctx.fillText(moveName, x + w / 2, y + h - Math.round(16 * s));
   }
 
   // Dashed cut line on right edge
