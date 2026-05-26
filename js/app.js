@@ -507,29 +507,24 @@ function drawLabelOnCanvas(ctx, box, qrCanvas, x, y, w, h) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, w, h);
 
-  // Header bar — taller to fit box number, name, and ID
-  const headerH = Math.round(115 * s);
+  // Header bar
+  const headerH = Math.round(100 * s);
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = Math.max(1, Math.round(2 * s));
   roundRect(ctx, x + pad, y + pad, w - pad * 2, headerH, Math.round(8 * s));
   ctx.stroke();
 
-  // Box number
+  // Box ID (e.g. BOX-001-EBK7)
   ctx.fillStyle = '#000000';
-  ctx.font = `600 ${Math.round(26 * s)}px ${ff}`;
+  ctx.font = `600 ${Math.round(22 * s)}px ${ff}`;
   ctx.textAlign = 'center';
-  ctx.fillText(`BOX #${box.num}`, x + w / 2, y + pad + Math.round(30 * s));
+  ctx.fillText(box.id || `BOX-${String(box.num).padStart(3,'0')}`, x + w / 2, y + pad + Math.round(30 * s));
 
   // Box name
   const displayName = box.labelName || box.name;
   const baseSize = displayName.length > 18 ? 34 : displayName.length > 12 ? 40 : 48;
   ctx.font = `800 ${Math.round(baseSize * s)}px ${ff}`;
-  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + Math.round(72 * s));
-
-  // Box ID — small, inside header outline
-  ctx.fillStyle = '#666666';
-  ctx.font = `400 ${Math.round(16 * s)}px monospace`;
-  ctx.fillText(box.id, x + w / 2, y + pad + Math.round(104 * s));
+  ctx.fillText(truncate(displayName, 22), x + w / 2, y + pad + Math.round(82 * s));
 
   // QR code — centered, tighter gap to header to reclaim vertical space
   const qrSize = Math.min(w - pad * 4, Math.round(220 * s));
