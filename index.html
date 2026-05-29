@@ -181,6 +181,13 @@
         <label style="font-size:11px;margin-bottom:4px;">Label name</label>
         <input type="text" id="qr-label-name-input" placeholder="Name on label">
       </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label style="font-size:11px;margin-bottom:4px;">Label size</label>
+        <div class="seg-control" id="label-format-control">
+          <button class="seg active" data-val="6up">6-up (4×6)</button>
+          <button class="seg" data-val="small">1.25 × 2.25"</button>
+        </div>
+      </div>
       <div id="label-preview-wrap">
         <canvas id="label-canvas"></canvas>
       </div>
@@ -191,7 +198,7 @@
             <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
             <rect x="6" y="14" width="12" height="8" />
           </svg>
-          Print Label (4×6)
+          <span id="qr-print-label">Print Label (4×6)</span>
         </button>
         <div class="label-save-row">
           <button class="btn btn-full" id="qr-save-png-btn">
