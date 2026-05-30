@@ -661,63 +661,76 @@ async function buildLabelCanvas(box) {
 }
 
 async function buildSmallLabelCanvas(box) {
-  const W = 375;  // 1.25in @ 300 DPI
-  const H = 675;  // 2.25in @ 300 DPI
+  const W = 675;  // 2.25in @ 300 DPI
+  const H = 375;  // 1.25in @ 300 DPI
 
   const canvas = document.getElementById('label-canvas');
   canvas.width = W;
   canvas.height = H;
-  const displayW = Math.min(140, window.innerWidth - 48);
+  const displayW = Math.min(280, window.innerWidth - 48);
   canvas.style.width = displayW + 'px';
   canvas.style.height = Math.round(displayW * H / W) + 'px';
 
   const ctx = canvas.getContext('2d');
   const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-  ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(3, 3, W - 6, H - 6);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(2, 2, W - 4, H - 4);
 
   const pad = 18;
-  let y = pad;
+
+  // Left column: QR code, square, fills the height
+  const qrSize = H - pad * 2;  // 339px
+  const qrImg = await generateQRCanvas(box.id, 400);
+  ctx.drawImage(qrImg, pad, pad, qrSize, qrSize);
+
+  // Right column: text, vertically centered
+  const rightX = pad + qrSize + pad;
+  const rightW = W - rightX - pad;
+  const cx = rightX + rightW / 2;
+
+  const displayName = box.labelName || box.name;
+  const nameSize = displayName.length > 14 ? 28 : displayName.length > 9 ? 36 : 44;
+
+  // Calculate total text block height for vertical centering
+  const idH = 30, nameH = nameSize + 6;
+  const roomH = box.room ? 30 : 0;
+  const priH = (box.priority === 'fragile' || box.priority === 'high') ? 30 : 0;
+  const gapH = 10 * ([idH, nameH, roomH, priH].filter(Boolean).length - 1);
+  const totalH = idH + nameH + roomH + priH + gapH;
+  let ty = (H - totalH) / 2 + idH;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#000000';
 
   // Box ID
-  ctx.fillStyle = '#000000';
-  ctx.font = `600 28px ${ff}`;
-  y += 34;
-  ctx.fillText(box.id || '', W / 2, y);
-  y += 14;
+  ctx.font = `600 22px ${ff}`;
+  ctx.fillText(box.id || '', cx, ty);
+  ty += nameH + 10;
 
   // Box name
-  const displayName = box.labelName || box.name;
-  const nameSize = displayName.length > 18 ? 36 : displayName.length > 12 ? 44 : 54;
   ctx.font = `800 ${nameSize}px ${ff}`;
-  y += nameSize;
-  ctx.fillText(truncate(displayName, 20), W / 2, y);
-  y += 18;
-
-  // QR code — nearly full width
-  const qrSize = W - pad * 2;
-  const qrImg = await generateQRCanvas(box.id, 400);
-  ctx.drawImage(qrImg, pad, y, qrSize, qrSize);
-  y += qrSize + 16;
+  ctx.fillText(truncate(displayName, 14), cx, ty);
+  ty += 10;
 
   // Room
   if (box.room) {
-    ctx.font = `500 30px ${ff}`;
-    ctx.fillText(box.room, W / 2, y + 30);
-    y += 46;
+    ty += roomH;
+    ctx.font = `500 22px ${ff}`;
+    ctx.fillText(box.room, cx, ty);
+    ty += 10;
   }
 
-  // Priority badge
+  // Priority
   if (box.priority === 'fragile' || box.priority === 'high') {
+    ty += priH;
     const pLabel = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
-    ctx.font = `700 28px ${ff}`;
-    ctx.fillText(pLabel, W / 2, y + 30);
+    ctx.font = `700 22px ${ff}`;
+    ctx.fillText(pLabel, cx, ty);
   }
 
   return canvas;
@@ -730,9 +743,9 @@ function getActiveLabelFormat() {
 async function rebuildLabelCanvas(box) {
   const fmt = getActiveLabelFormat();
   const printLabel = document.getElementById('qr-print-label');
-  if (printLabel) printLabel.textContent = fmt === 'small' ? 'Print Label (1.25×2.25")' : 'Print Label (4×6)';
+  if (printLabel) printLabel.textContent = fmt === 'small' ? 'Print Label (2.25×1.25")' : 'Print Label (4×6)';
   const caption = document.getElementById('label-canvas-caption');
-  if (caption) caption.textContent = fmt === 'small' ? 'Single · 1.25×2.25"' : '6 copies · 2×3 grid';
+  if (caption) caption.textContent = fmt === 'small' ? 'Single · 2.25×1.25"' : '6 copies · 2×3 grid';
   return fmt === 'small' ? buildSmallLabelCanvas(box) : buildLabelCanvas(box);
 }
 
@@ -804,7 +817,7 @@ function saveLabelPDF(box) {
   if (!canvas) return;
   if (!window.jspdf) { alert('PDF library not loaded yet. Please try again in a moment.'); return; }
   const { jsPDF } = window.jspdf;
-  const [pw, ph] = getActiveLabelFormat() === 'small' ? [1.25, 2.25] : [6, 8];
+  const [pw, ph] = getActiveLabelFormat() === 'small' ? [2.25, 1.25] : [6, 8];
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [pw, ph] });
   const imgData = canvas.toDataURL('image/png');
   pdf.addImage(imgData, 'PNG', 0, 0, pw, ph);
