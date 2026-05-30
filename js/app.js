@@ -660,6 +660,82 @@ async function buildLabelCanvas(box) {
   return canvas;
 }
 
+async function buildSmallLabelCanvas(box) {
+  const W = 375;  // 1.25in @ 300 DPI
+  const H = 675;  // 2.25in @ 300 DPI
+
+  const canvas = document.getElementById('label-canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const displayW = Math.min(140, window.innerWidth - 48);
+  canvas.style.width = displayW + 'px';
+  canvas.style.height = Math.round(displayW * H / W) + 'px';
+
+  const ctx = canvas.getContext('2d');
+  const ff = '-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(3, 3, W - 6, H - 6);
+
+  const pad = 18;
+  let y = pad;
+
+  // Box ID
+  ctx.fillStyle = '#000000';
+  ctx.font = `600 28px ${ff}`;
+  y += 34;
+  ctx.fillText(box.id || '', W / 2, y);
+  y += 14;
+
+  // Box name
+  const displayName = box.labelName || box.name;
+  const nameSize = displayName.length > 18 ? 36 : displayName.length > 12 ? 44 : 54;
+  ctx.font = `800 ${nameSize}px ${ff}`;
+  y += nameSize;
+  ctx.fillText(truncate(displayName, 20), W / 2, y);
+  y += 18;
+
+  // QR code — nearly full width
+  const qrSize = W - pad * 2;
+  const qrImg = await generateQRCanvas(box.id, 400);
+  ctx.drawImage(qrImg, pad, y, qrSize, qrSize);
+  y += qrSize + 16;
+
+  // Room
+  if (box.room) {
+    ctx.font = `500 30px ${ff}`;
+    ctx.fillText(box.room, W / 2, y + 30);
+    y += 46;
+  }
+
+  // Priority badge
+  if (box.priority === 'fragile' || box.priority === 'high') {
+    const pLabel = box.priority === 'fragile' ? '⚠ FRAGILE' : '★ OPEN FIRST';
+    ctx.font = `700 28px ${ff}`;
+    ctx.fillText(pLabel, W / 2, y + 30);
+  }
+
+  return canvas;
+}
+
+function getActiveLabelFormat() {
+  return document.querySelector('#label-format-control .seg.active')?.dataset.val || '6up';
+}
+
+async function rebuildLabelCanvas(box) {
+  const fmt = getActiveLabelFormat();
+  const printLabel = document.getElementById('qr-print-label');
+  if (printLabel) printLabel.textContent = fmt === 'small' ? 'Print Label (1.25×2.25")' : 'Print Label (4×6)';
+  const caption = document.getElementById('label-canvas-caption');
+  if (caption) caption.textContent = fmt === 'small' ? 'Single · 1.25×2.25"' : '6 copies · 2×3 grid';
+  return fmt === 'small' ? buildSmallLabelCanvas(box) : buildLabelCanvas(box);
+}
+
 async function showQR(boxId) {
   currentQRBoxId = boxId;
   const box = boxes.find(b => b.id === boxId);
@@ -681,18 +757,27 @@ async function showQR(boxId) {
       redrawTimer = setTimeout(async () => {
         box.labelName = nameInput.value.trim() || box.name;
         saveBoxes();
-        await buildLabelCanvas(box);
+        await rebuildLabelCanvas(box);
       }, 350);
     };
   }
+
+  // Wire format selector
+  document.querySelectorAll('#label-format-control .seg').forEach(btn => {
+    btn.onclick = async () => {
+      document.querySelectorAll('#label-format-control .seg').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      await rebuildLabelCanvas(box);
+    };
+  });
 
   openSheet('qr-sheet');
 
   // Build canvas after sheet opens
   setTimeout(async () => {
     document.getElementById('label-preview-wrap').innerHTML =
-      '<canvas id="label-canvas"></canvas><p style="font-size:11px;color:var(--text3);margin-top:4px;">6 copies · 3×2⅔ label</p>';
-    await buildLabelCanvas(box);
+      '<canvas id="label-canvas"></canvas><p id="label-canvas-caption" style="font-size:11px;color:var(--text3);margin-top:4px;"></p>';
+    await rebuildLabelCanvas(box);
     wireQRButtons(box);
   }, 100);
 }
@@ -719,10 +804,10 @@ function saveLabelPDF(box) {
   if (!canvas) return;
   if (!window.jspdf) { alert('PDF library not loaded yet. Please try again in a moment.'); return; }
   const { jsPDF } = window.jspdf;
-  // 6x8 portrait (6in wide x 8in tall — 4 labels, 2×2 grid)
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [6, 8] });
+  const [pw, ph] = getActiveLabelFormat() === 'small' ? [1.25, 2.25] : [6, 8];
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [pw, ph] });
   const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, 6, 8);
+  pdf.addImage(imgData, 'PNG', 0, 0, pw, ph);
   pdf.save(`movebox-label-${box.id}.pdf`);
 }
 
